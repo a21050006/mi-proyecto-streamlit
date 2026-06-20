@@ -64,15 +64,20 @@ class StreamlitLogger(Callback):
         msg = f"🧠 Entrenando Red Neuronal... Época {epoch+1}/20 | Precisión: {logs.get('accuracy', 0):.2%}"
         self.placeholder.info(msg)
 
+# --- CONEXIÓN DE CONFIANZA USANDO ST.SECRETS ---
+def get_db_connection():
+    return mysql.connector.connect(
+        host=st.secrets["DB_HOST"],
+        port=int(st.secrets["DB_PORT"]),
+        user=st.secrets["DB_USER"],
+        password=st.secrets["DB_PASSWORD"],
+        database=st.secrets["DB_NAME"]
+    )
+
 # --- CONEXIÓN A MYSQL Y CONTROL DE INTEGRIDAD ---
 def init_db():
     try:
-        conn = mysql.connector.connect(host="localhost", user="root", password="")
-        with conn.cursor() as c:
-            c.execute("CREATE DATABASE IF NOT EXISTS base_datos_its")
-        conn.close()
-        
-        conn = mysql.connector.connect(host="localhost", user="root", password="", database="base_datos_its")
+        conn = get_db_connection()
         with conn.cursor() as c:
             c.execute('''CREATE TABLE IF NOT EXISTS usuarios (
                             matricula VARCHAR(50) PRIMARY KEY,
@@ -102,7 +107,7 @@ def init_db():
                             sexo VARCHAR(20), semestre INT, sistema VARCHAR(50),
                             horas_estudio INT, dias_estudio INT,
                             motivacion INT, confianza INT, dificultad INT,
-                            apoio INT, estres INT,
+                            apoyo INT, estres INT,
                             computadora VARCHAR(10), internet VARCHAR(10), calidad_internet INT,
                             FOREIGN KEY (matricula) REFERENCES usuarios(matricula) ON DELETE CASCADE)''')
                             
@@ -115,12 +120,9 @@ def init_db():
             conn.commit()
         conn.close()
     except mysql.connector.Error as err:
-        st.error(f"Error de conexión a MySQL: {err}.")
+        st.error(f"Error de conexión a la base de datos remota Aiven: {err}.")
 
 init_db()
-
-def get_db_connection():
-    return mysql.connector.connect(host="localhost", user="root", password="", database="base_datos_its")
 
 def login():
     st.markdown("<br><br><br>", unsafe_allow_html=True)
@@ -170,7 +172,6 @@ def mostrar_modulo_ia():
     st.markdown("### 🧠 Inteligencia Artificial con Aprendizaje Profundo")
     st.write("Detección de riesgo de reprobación en asignaturas de programación mediante análisis de desempeño predictivo.")
     
-    # Condición: Solo el administrador/administrativo ve la sección para alterar datasets externos
     if st.session_state.get('rol_actual') == 'administrativo':
         st.markdown("#### 📂 Configuración del Dataset de Entrenamiento (Exclusivo Administrador)")
         col_da1, col_da2 = st.columns([2, 1])
@@ -368,6 +369,14 @@ def mostrar_modulo_ia():
         df_estilado = st.session_state['df_resultados'].style.apply(colorear_filas, axis=1)
         st.dataframe(df_estilado, use_container_width=True)
 
+        # Botón para descargar el Excel generado
+        st.download_button(
+            label="📥 Descargar Diagnóstico en Excel",
+            data=st.session_state['excel_data'],
+            file_name="Diagnostico_Alumnos_IA.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
 # --- PANTALLA: ALUMNO ---
 def pantalla_alumno():
     col1, col2 = st.columns([2.2, 0.8])
@@ -396,7 +405,7 @@ def pantalla_alumno():
                             with conn.cursor() as c:
                                 consulta = '''REPLACE INTO respuestas_alumnos 
                                              (matricula, sexo, semestre, sistema, horas_estudio, dias_estudio,
-                                             motivacion, confianza, dificultad, apoio, estres, computadora, internet, calidad_internet)
+                                             motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet)
                                              VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
                                 c.execute(consulta, (st.session_state['usuario_actual'], sexo, semestre, sistema, horas_estudio, dias_estudio,
                                            motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet))
@@ -464,180 +473,4 @@ def pantalla_docente():
                             st.error("❌ Debes escribir una matrícula.")
                         else:
                             try:
-                                with get_db_connection() as conn:
-                                    with conn.cursor() as c:
-                                        c.execute("SELECT nombre, rol, docente_id FROM usuarios WHERE matricula = %s", (matricula_ingresada,))
-                                        usuario_encontrado = c.fetchone()
-                                        
-                                        if not usuario_encontrado:
-                                            st.error("❌ La matrícula no existe.")
-                                        elif usuario_encontrado[2] != st.session_state['usuario_actual']:
-                                            st.error("❌ Este alumno no está asignado bajo tu cargo.")
-                                        else:
-                                            consulta = '''REPLACE INTO evaluaciones_docentes 
-                                                         (matricula, promedio, reprobadas, calif_ultima, dias_asistencia, 
-                                                         asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas)
-                                                         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
-                                            c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia, 
-                                                       asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
-                                            conn.commit()
-                                            st.success(f"🎉 ¡Expediente de {usuario_encontrado[0]} guardado!")
-                                            st.session_state['alumno_seleccionado_evaluar'] = "" 
-                                            time.sleep(0.5)
-                                            st.rerun()
-                            except mysql.connector.Error as err:
-                                st.error(f"Error: {err}")
-
-            with tab_crud:
-                st.subheader("👥 Control de Alumnos Asignados")
-                df_alumnos = pd.DataFrame([list(row[:4]) for row in lista_alumnos], columns=["Matrícula", "Nombre Completo", "Estado", "Correo"])
-                st.dataframe(df_alumnos, use_container_width=True)
-                
-                # CRUD: CREAR
-                with st.expander("➕ Registrar Nuevo Alumno"):
-                    with st.form("form_alta_doc"):
-                        al_nombre = st.text_input("Nombre Completo")
-                        al_correo = st.text_input("Correo")
-                        al_matricula = st.text_input("Matrícula")
-                        al_password = st.text_input("Contraseña", value="123")
-                        if st.form_submit_button("Guardar Alumno"):
-                            try:
-                                with get_db_connection() as conn:
-                                    with conn.cursor() as c:
-                                        c.execute("INSERT INTO usuarios (matricula, password, rol, nombre, correo, docente_id) VALUES (%s, %s, 'alumno', %s, %s, %s)",
-                                                  (al_matricula, al_password, al_nombre, al_correo, st.session_state['usuario_actual']))
-                                        conn.commit()
-                                st.success("Alumno dado de alta.")
-                                time.sleep(0.5)
-                                st.rerun()
-                            except mysql.connector.Error as err:
-                                st.error(f"Error: {err}")
-                
-                # --- CRUD: EDITAR ALUMNO ---
-                with st.expander("📝 Editar Alumno Seleccionado"):
-                    if not lista_alumnos:
-                        st.write("No hay alumnos para editar.")
-                    else:
-                        dict_alumnos = {row[1]: row for row in lista_alumnos}
-                        alumno_a_editar_nom = st.selectbox("Selecciona el alumno a modificar:", list(dict_alumnos.keys()))
-                        datos_alumno = dict_alumnos[alumno_a_editar_nom]
-                        
-                        with st.form("form_editar_doc"):
-                            edit_nombre = st.text_input("Modificar Nombre Completo", value=datos_alumno[1])
-                            edit_correo = st.text_input("Modificar Correo", value=datos_alumno[3])
-                            edit_password = st.text_input("Modificar Contraseña", value=datos_alumno[4])
-                            
-                            if st.form_submit_button("💾 Guardar Cambios Realizados", type="primary"):
-                                try:
-                                    with get_db_connection() as conn:
-                                        with conn.cursor() as c:
-                                            c.execute("""UPDATE usuarios 
-                                                         SET nombre=%s, correo=%s, password=%s 
-                                                         WHERE matricula=%s AND docente_id=%s""",
-                                                      (edit_nombre, edit_correo, edit_password, datos_alumno[0], st.session_state['usuario_actual']))
-                                            conn.commit()
-                                    st.success(f"🎉 Datos de {edit_nombre} actualizados con éxito.")
-                                    time.sleep(0.5)
-                                    st.rerun()
-                                except mysql.connector.Error as err:
-                                    st.error(f"Error al editar: {err}")
-
-                # --- CRUD: ELIMINAR ALUMNO ---
-                with st.expander("🗑️ Eliminar Alumno del Sistema"):
-                    if not lista_alumnos:
-                        st.write("No hay alumnos para eliminar.")
-                    else:
-                        dict_alumnos_del = {f"{row[1]} ({row[0]})": row[0] for row in lista_alumnos}
-                        alumno_a_eliminar_sel = st.selectbox("Selecciona el alumno a dar de baja definitiva:", list(dict_alumnos_del.keys()))
-                        matricula_a_eliminar = dict_alumnos_del[alumno_a_eliminar_sel]
-                        
-                        st.warning(f"⚠️ ¿Estás seguro de que deseas eliminar completamente al alumno con matrícula {matricula_a_eliminar}? Esta acción no se puede deshacer.")
-                        if st.button("🚨 Confirmar Eliminación Definitiva", type="primary", use_container_width=True):
-                            try:
-                                with get_db_connection() as conn:
-                                    with conn.cursor() as c:
-                                        c.execute("DELETE FROM usuarios WHERE matricula=%s AND docente_id=%s", (matricula_a_eliminar, st.session_state['usuario_actual']))
-                                        conn.commit()
-                                st.success("🚀 Alumno eliminado correctamente de todos los registros.")
-                                time.sleep(0.5)
-                                st.rerun()
-                            except mysql.connector.Error as err:
-                                st.error(f"Error al eliminar: {err}")
-                                        
-            with tab2:
-                mostrar_modulo_ia()
-
-    with col2:
-        with st.container(border=True):
-            st.markdown("### 📋 Alumnos Asignados")
-            st.write("Estatus de evaluación:")
-            st.write("---")
-            
-            if not lista_alumnos:
-                st.info("No posees alumnos inscritos a tu cargo.")
-            else:
-                for row in lista_alumnos:
-                    mat, nom, estado = row[0], row[1], row[2]
-                    with st.container(border=True):
-                        col_text, col_btn = st.columns([1.3, 1.1])
-                        with col_text:
-                            st.markdown(f"**{nom}**")
-                            st.caption(f"Matrícula: {mat}")
-                            if estado == "EVALUADO":
-                                st.markdown("<span style='color:#00cc66; font-weight:bold;'>🟢 EVALUADO</span>", unsafe_allow_html=True)
-                            else:
-                                st.markdown("<span style='color:#ff3333; font-weight:bold;'>🔴 PENDIENTE</span>", unsafe_allow_html=True)
-                        with col_btn:
-                            st.write("") 
-                            if st.button("📝 Evaluar", key=f"btn_{mat}", use_container_width=True):
-                                st.session_state['alumno_seleccionado_evaluar'] = mat
-                                st.rerun()
-
-# --- PANTALLA: ADMINISTRATIVO ---
-def pantalla_administrativo():
-    col1, col2 = st.columns([2.2, 0.8])
-    
-    with col1:
-        with st.container(border=True):
-            st.markdown("<h1 style='text-align: center;'>⚙️ Panel de Control Administrativo</h1>", unsafe_allow_html=True)
-            st.write("---")
-            tab1, tab2 = st.tabs(["🚀 Ejecutar Diagnóstico", "👤 Registro de Usuarios"])
-            
-            with tab1:
-                mostrar_modulo_ia()
-            
-            with tab2:
-                st.subheader("👤 Configuración de Accesos al Sistema")
-                try:
-                    with get_db_connection() as conn:
-                        with conn.cursor() as c:
-                            c.execute("SELECT nombre, correo, matricula, rol, password FROM usuarios")
-                            lista_usuarios = c.fetchall()
-                    df_usuarios = pd.DataFrame(lista_usuarios, columns=["Nombre Completo", "Correo Electrónico", "Usuario / Matrícula", "Rol", "Contraseña"])
-                    st.dataframe(df_usuarios, use_container_width=True)
-                except mysql.connector.Error as err:
-                    st.error(f"Error: {err}")
-                    
-    with col2:
-        with st.container(border=True):
-            st.markdown("### ℹ️ Estatus de Sesión")
-            st.info(f"**Administrador Activo:**\n{st.session_state['nombre']}")
-            st.write("Desde esta terminal puedes auditar de manera global la base de datos completa e iniciar simulaciones en la Red Neuronal Profunda.")
-
-# --- ENRUTADOR DE FLUJO PRINCIPAL ---
-if st.session_state['usuario_actual'] is None:
-    login()
-else:
-    if st.sidebar.button("🚪 Cerrar Sesión Activa", use_container_width=True):
-        st.session_state['usuario_actual'] = None
-        st.session_state['rol_actual'] = None
-        st.session_state['nombre'] = ""
-        st.session_state['analisis_completado'] = False
-        st.rerun()
-        
-    if st.session_state['rol_actual'] == 'alumno':
-        pantalla_alumno()
-    elif st.session_state['rol_actual'] == 'docente':
-        pantalla_docente()
-    elif st.session_state['rol_actual'] == 'administrativo':
-        pantalla_administrativo()
+                                with get_db
