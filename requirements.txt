@@ -1,4 +1,7 @@
 streamlit
-mysql-connector-python
 pandas
 numpy
+mysql-connector-python
+scikit-learn
+tensorflow
+openpyxl
