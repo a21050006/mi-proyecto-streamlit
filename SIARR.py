@@ -107,7 +107,7 @@ def init_db():
                             sexo VARCHAR(20), semestre INT, sistema VARCHAR(50),
                             horas_estudio INT, dias_estudio INT,
                             motivacion INT, confianza INT, dificultad INT,
-                            apoyo INT, estres INT,
+                            apoio INT, estres INT,
                             computadora VARCHAR(10), internet VARCHAR(10), calidad_internet INT,
                             FOREIGN KEY (matricula) REFERENCES usuarios(matricula) ON DELETE CASCADE)''')
                             
@@ -265,7 +265,7 @@ def mostrar_modulo_ia():
                     u.matricula, u.nombre, ra.semestre, ra.sexo, ra.sistema,
                     ed.promedio, ed.reprobadas, ed.calif_ultima, ed.dias_asistencia,
                     ed.asistencia_clases, ed.cumplimiento, ed.participacion, ed.practicas, ed.uso_plataformas,
-                    ra.horas_estudio, ra.dias_estudio, ra.apoyo, ra.motivacion, ra.confianza, ra.dificultad, ra.estres,
+                    ra.horas_estudio, ra.dias_estudio, ra.apoio, ra.motivacion, ra.confianza, ra.dificultad, ra.estres,
                     ra.computadora, ra.internet, ra.calidad_internet
                 FROM usuarios u
                 INNER JOIN respuestas_alumnos ra ON u.matricula = ra.matricula
@@ -282,7 +282,7 @@ def mostrar_modulo_ia():
                 df_db = pd.read_sql(query_completos, conn, params=parametros_query if parametros_query else None)
             
             if df_db.empty:
-                st.warning("⚠️ No hay alumnos con expedientes completos a tu cargo bajo este filtro en este momento.")
+                st.warning("⚠️ No hay alumnos con expedientes completos bajo este filtro en este momento.")
                 st.session_state['analisis_completado'] = False
             else:
                 df_db_prep = pd.DataFrame()
@@ -302,7 +302,7 @@ def mostrar_modulo_ia():
                 df_db_prep['Uso_Plataformas'] = df_db['uso_plataformas']
                 df_db_prep['Horas_Estudio_Semana'] = df_db['horas_estudio']
                 df_db_prep['Dias_Estudio_Semana'] = df_db['dias_estudio']
-                df_db_prep['Apoyo_Familiar'] = df_db['apoyo']
+                df_db_prep['Apoyo_Familiar'] = df_db['apoio']
                 df_db_prep['Motivacion_Programacion'] = df_db['motivacion']
                 df_db_prep['Confianza_Aprobar'] = df_db['confianza']
                 df_db_prep['Dificultad_Materia'] = df_db['dificultad']
@@ -369,14 +369,6 @@ def mostrar_modulo_ia():
         df_estilado = st.session_state['df_resultados'].style.apply(colorear_filas, axis=1)
         st.dataframe(df_estilado, use_container_width=True)
 
-        # Botón para descargar el Excel generado
-        st.download_button(
-            label="📥 Descargar Diagnóstico en Excel",
-            data=st.session_state['excel_data'],
-            file_name="Diagnostico_Alumnos_IA.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
 # --- PANTALLA: ALUMNO ---
 def pantalla_alumno():
     col1, col2 = st.columns([2.2, 0.8])
@@ -393,8 +385,13 @@ def pantalla_alumno():
                 sistema = st.selectbox("Sistema Escolar", ["Escolarizado", "Semiescolarizado"])
                 horas_estudio = st.number_input("Horas de Estudio a la Semana", min_value=0, max_value=168, value=5)
                 dias_estudio = st.slider("Días de Estudio a la Semana", 0, 7, 3)
-                fields = [st.slider(f"{label} (1 a 5)", 1, 5, 3) for label in ["Motivación", "Confianza en Aprobar", "Dificultad", "Apoyo Familiar", "Estrés"]]
-                motivacion, confianza, dificultad, apoyo, estres = fields
+                
+                motivacion = st.slider("Motivación (1 a 5)", 1, 5, 3)
+                confianza = st.slider("Confianza en Aprobar (1 a 5)", 1, 5, 3)
+                dificultad = st.slider("Dificultad (1 a 5)", 1, 5, 3)
+                apoyo = st.slider("Apoyo Familiar (1 a 5)", 1, 5, 3)
+                estres = st.slider("Estrés (1 a 5)", 1, 5, 3)
+                
                 computadora = st.radio("¿Computadora Propia?", ["Sí", "No"])
                 internet = st.radio("¿Internet en Casa?", ["Sí", "No"])
                 calidad_internet = st.slider("Calidad de Internet (1 a 5)", 1, 5, 3)
@@ -405,7 +402,7 @@ def pantalla_alumno():
                             with conn.cursor() as c:
                                 consulta = '''REPLACE INTO respuestas_alumnos 
                                              (matricula, sexo, semestre, sistema, horas_estudio, dias_estudio,
-                                             motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet)
+                                             motivacion, confianza, dificultad, apoio, estres, computadora, internet, calidad_internet)
                                              VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
                                 c.execute(consulta, (st.session_state['usuario_actual'], sexo, semestre, sistema, horas_estudio, dias_estudio,
                                            motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet))
@@ -422,7 +419,7 @@ def pantalla_alumno():
             st.write("---")
             st.write("Asegúrate de responder de manera honesta para que el algoritmo de IA pueda estimar tu estatus de riesgo con precisión.")
 
-# --- PANTALLA: DOCENTE ---
+# --- PANTALLA: DOCENTE O ADMINISTRATIVO ---
 def pantalla_docente():
     col1, col2 = st.columns([2.1, 0.9])  
     
@@ -430,22 +427,34 @@ def pantalla_docente():
     try:
         with get_db_connection() as conn:
             with conn.cursor() as c:
-                query = """
-                    SELECT u.matricula, u.nombre, 
-                           CASE WHEN ed.matricula IS NOT NULL THEN 'EVALUADO' ELSE 'PENDIENTE' END as estado,
-                           u.correo, u.password
-                    FROM usuarios u
-                    LEFT JOIN evaluaciones_docentes ed ON u.matricula = ed.matricula
-                    WHERE u.rol='alumno' AND u.docente_id=%s
-                """
-                c.execute(query, (st.session_state['usuario_actual'],))
+                if st.session_state['rol_actual'] == 'administrativo':
+                    query = """
+                        SELECT u.matricula, u.nombre, 
+                               CASE WHEN ed.matricula IS NOT NULL THEN 'EVALUADO' ELSE 'PENDIENTE' END as estado,
+                               u.correo, u.password
+                        FROM usuarios u
+                        LEFT JOIN evaluaciones_docentes ed ON u.matricula = ed.matricula
+                        WHERE u.rol='alumno'
+                    """
+                    c.execute(query)
+                else:
+                    query = """
+                        SELECT u.matricula, u.nombre, 
+                               CASE WHEN ed.matricula IS NOT NULL THEN 'EVALUADO' ELSE 'PENDIENTE' END as estado,
+                               u.correo, u.password
+                        FROM usuarios u
+                        LEFT JOIN evaluaciones_docentes ed ON u.matricula = ed.matricula
+                        WHERE u.rol='alumno' AND u.docente_id=%s
+                    """
+                    c.execute(query, (st.session_state['usuario_actual'],))
                 lista_alumnos = c.fetchall()
     except mysql.connector.Error as err:
         st.error(f"Error al cargar alumnos: {err}")
 
     with col1:
         with st.container(border=True):
-            st.markdown(f"<h1>👨‍🏫 Panel Docente</h1>", unsafe_allow_html=True)
+            titulo_panel = "Panel General (Administrativo)" if st.session_state['rol_actual'] == 'administrativo' else "Panel Docente"
+            st.markdown(f"<h1>👨‍🏫 {titulo_panel}</h1>", unsafe_allow_html=True)
             st.write("---")
             
             tab1, tab_crud, tab2 = st.tabs(["📝 Carga la información del Alumno", "👥 Gestión de Alumnos (CRUD)", "🚀 Ejecutar Diagnóstico"])
@@ -473,4 +482,139 @@ def pantalla_docente():
                             st.error("❌ Debes escribir una matrícula.")
                         else:
                             try:
-                                with get_db
+                                with get_db_connection() as conn:
+                                    with conn.cursor() as c:
+                                        c.execute("SELECT nombre, rol, docente_id FROM usuarios WHERE matricula = %s", (matricula_ingresada,))
+                                        usuario_encontrado = c.fetchone()
+                                        
+                                        if not usuario_encontrado:
+                                            st.error("❌ La matrícula no existe.")
+                                        elif st.session_state['rol_actual'] != 'administrativo' and usuario_encontrado[2] != st.session_state['usuario_actual']:
+                                            st.error("❌ Este alumno no está asignado bajo tu cargo.")
+                                        else:
+                                            consulta = '''REPLACE INTO evaluaciones_docentes 
+                                                         (matricula, promedio, reprobadas, calif_ultima, dias_asistencia, 
+                                                         asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas)
+                                                         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+                                            c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia, 
+                                                       asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
+                                            conn.commit()
+                                            st.success(f"🎉 ¡Expediente de {usuario_encontrado[0]} guardado!")
+                                            st.session_state['alumno_seleccionado_evaluar'] = "" 
+                                            time.sleep(0.5)
+                                            st.rerun()
+                            except mysql.connector.Error as err:
+                                st.error(f"Error: {err}")
+
+            with tab_crud:
+                st.subheader("👥 Control de Alumnos Asignados")
+                if lista_alumnos:
+                    df_alumnos = pd.DataFrame([list(row[:4]) for row in lista_alumnos], columns=["Matrícula", "Nombre Completo", "Estado", "Correo"])
+                    st.dataframe(df_alumnos, use_container_width=True)
+                else:
+                    st.info("No hay alumnos registrados.")
+                
+                # CRUD: CREAR
+                with st.expander("➕ Registrar Nuevo Alumno"):
+                    with st.form("form_alta_doc"):
+                        al_nombre = st.text_input("Nombre Completo")
+                        al_correo = st.text_input("Correo")
+                        al_matricula = st.text_input("Matrícula")
+                        al_password = st.text_input("Contraseña", value="123")
+                        docente_id_asignado = st.session_state['usuario_actual'] if st.session_state['rol_actual'] == 'docente' else None
+                        
+                        if st.form_submit_button("Guardar Alumno"):
+                            try:
+                                with get_db_connection() as conn:
+                                    with conn.cursor() as c:
+                                        c.execute("INSERT INTO usuarios (matricula, password, rol, nombre, correo, docente_id) VALUES (%s, %s, 'alumno', %s, %s, %s)",
+                                                  (al_matricula, al_password, al_nombre, al_correo, docente_id_asignado))
+                                        conn.commit()
+                                st.success("Alumno dado de alta.")
+                                time.sleep(0.5)
+                                st.rerun()
+                            except mysql.connector.Error as err:
+                                st.error(f"Error: {err}")
+                
+                # --- CRUD: EDITAR ALUMNO ---
+                with st.expander("📝 Editar Alumno Seleccionado"):
+                    if not lista_alumnos:
+                        st.write("No hay alumnos para editar.")
+                    else:
+                        dict_alumnos = {row[1]: row for row in lista_alumnos}
+                        alumno_a_editar_nom = st.selectbox("Selecciona el alumno a modificar:", list(dict_alumnos.keys()))
+                        datos_alumno = dict_alumnos[alumno_a_editar_nom]
+                        
+                        with st.form("form_editar_doc"):
+                            edit_nombre = st.text_input("Modificar Nombre Completo", value=datos_alumno[1])
+                            edit_correo = st.text_input("Modificar Correo", value=datos_alumno[3])
+                            edit_password = st.text_input("Modificar Contraseña", value=datos_alumno[4])
+                            
+                            if st.form_submit_button("💾 Guardar Cambios Realizados", type="primary"):
+                                try:
+                                    with get_db_connection() as conn:
+                                        with conn.cursor() as c:
+                                            if st.session_state['rol_actual'] == 'administrativo':
+                                                c.execute("""UPDATE usuarios 
+                                                             SET nombre=%s, correo=%s, password=%s 
+                                                             WHERE matricula=%s""",
+                                                          (edit_nombre, edit_correo, edit_password, datos_alumno[0]))
+                                            else:
+                                                c.execute("""UPDATE usuarios 
+                                                             SET nombre=%s, correo=%s, password=%s 
+                                                             WHERE matricula=%s AND docente_id=%s""",
+                                                          (edit_nombre, edit_correo, edit_password, datos_alumno[0], st.session_state['usuario_actual']))
+                                            conn.commit()
+                                    st.success(f"🎉 Datos de {edit_nombre} actualizados con éxito.")
+                                    time.sleep(0.5)
+                                    st.rerun()
+                                except mysql.connector.Error as err:
+                                    st.error(f"Error al editar: {err}")
+
+                # --- CRUD: ELIMINAR ALUMNO ---
+                with st.expander("🗑️ Eliminar Alumno del Sistema"):
+                    if not lista_alumnos:
+                        st.write("No hay alumnos para eliminar.")
+                    else:
+                        dict_alumnos_del = {f"{row[1]} ({row[0]})": row[0] for row in lista_alumnos}
+                        alumno_a_eliminar_sel = st.selectbox("Selecciona el alumno a dar de baja definitiva:", list(dict_alumnos_del.keys()))
+                        matricula_a_eliminar = dict_alumnos_del[alumno_a_eliminar_sel]
+                        
+                        st.warning(f"⚠️ ¿Estás seguro de que deseas eliminar completamente al alumno con matrícula {matricula_a_eliminar}? Esta acción no se puede deshacer.")
+                        if st.button("🚨 Confirmar Eliminación Definitiva", type="primary", use_container_width=True):
+                            try:
+                                with get_db_connection() as conn:
+                                    with conn.cursor() as c:
+                                        if st.session_state['rol_actual'] == 'administrativo':
+                                            c.execute("DELETE FROM usuarios WHERE matricula=%s", (matricula_a_eliminar,))
+                                        else:
+                                            c.execute("DELETE FROM usuarios WHERE matricula=%s AND docente_id=%s", (matricula_a_eliminar, st.session_state['usuario_actual']))
+                                        conn.commit()
+                                st.success("🚀 Alumno eliminado correctamente de todos los registros.")
+                                time.sleep(0.5)
+                                st.rerun()
+                            except mysql.connector.Error as err:
+                                st.error(f"Error al eliminar: {err}")
+                                        
+            with tab2:
+                mostrar_modulo_ia()
+
+    with col2:
+        with st.container(border=True):
+            st.markdown("### 📋 Alumnos Asignados")
+            st.write("Estatus de evaluación:")
+            st.write("---")
+            if lista_alumnos:
+                for row in lista_alumnos:
+                    color_status = "🟢" if row[2] == "EVALUADO" else "🟡"
+                    st.write(f"{color_status} **{row[1]}** ({row[0]}) - {row[2]}")
+            else:
+                st.write("Sin alumnos asignados.")
+
+# --- CONTROLADOR CENTRAL DE PANTALLAS ---
+if st.session_state['usuario_actual'] is None:
+    login()
+elif st.session_state['rol_actual'] == 'alumno':
+    pantalla_alumno()
+elif st.session_state['rol_actual'] in ['docente', 'administrativo']:
+    pantalla_docente()
