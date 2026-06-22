@@ -20,7 +20,7 @@ from openpyxl.styles import PatternFill
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
-# --- CSS PERSONALIZADO PARA PANTALLA COMPLETA ---
+# --- CSS PERSONALIZADO (Limpio y Responsivo Nativo) ---
 st.markdown("""
     <style>
         .block-container {
@@ -451,7 +451,6 @@ else:
                 st.subheader("📋 Cuestionario de Hábitos y Contexto Estudiantil")
                 
                 with st.form("form_alumno"):
-                    # Se limpian los valores por defecto configurando index=None o value=None para evitar el auto-relleno
                     sexo = st.selectbox("Sexo", ["Hombre", "Mujer"], index=None, placeholder="Selecciona una opción...")
                     semestre = st.number_input("Semestre actual", min_value=1, max_value=12, value=None, placeholder="Ej. 1")
                     sistema = st.selectbox("Sistema Escolar", ["Escolarizado", "Semiescolarizado"], index=None, placeholder="Selecciona una opción...")
@@ -469,7 +468,6 @@ else:
                     calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     
                     if st.form_submit_button("Guardar Respuestas", type="primary", use_container_width=True):
-                        # Validación estricta de campos vacíos para obligar la selección explícita
                         if any(v is None for v in [sexo, semestre, sistema, horas_estudio, dias_estudio, motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet]):
                             st.error("❌ Todos los campos son obligatorios. Por favor, responde el cuestionario por completo antes de guardar.")
                         else:
@@ -523,7 +521,7 @@ else:
                         c.execute(query_alumnos)
                     lista_alumnos_pendientes = c.fetchall()
 
-                    if st.session_state['rol_actual'] == 'administrativo':
+                    if st.session_state['rol_actual'] == 'administrative':
                         c.execute("SELECT matricula, nombre, rol, correo, password, docente_id FROM usuarios")
                         lista_usuarios_crud = c.fetchall()
                         
@@ -655,8 +653,8 @@ else:
                                     edit_correo = st.text_input("Modificar Correo", value=datos_originales[3])
                                     edit_password = st.text_input("Modificar Contraseña", value=datos_originales[4])
                                     
-                                    if st.session_state['rol_actual'] == 'administrativo':
-                                        roles_disp = ["alumno", "docente", "administrativo"]
+                                    if st.session_state['rol_actual'] == 'administrative':
+                                        roles_disp = ["alumno", "docente", "administrative"]
                                         idx_r = roles_disp.index(datos_originales[2]) if datos_originales[2] in roles_disp else 0
                                         edit_rol = st.selectbox("Modificar Rol", roles_disp, index=idx_r)
                                         
@@ -720,7 +718,6 @@ else:
                         with pd.ExcelWriter(buffer_crud, engine='openpyxl') as writer:
                             df_crud_vista.to_excel(writer, index=False, sheet_name='Usuarios Registrados')
                         
-                        # --- DISEÑO AJUSTADO: Distribución 8.5 y 1.5 para un botón de Excel muy pequeño ---
                         col_tit_tabla, col_btn_tabla = st.columns([8.5, 1.5])
                         with col_tit_tabla:
                             st.write("### 📋 Vista General de la Tabla de Usuarios")
