@@ -481,13 +481,16 @@ else:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as c:
-                    # 1. Filtro estricto: Solo alumnos PENDIENTES y vinculación de su docente encargado
+                    # 1. Filtro inteligente: Detecta de quién está pendiente la información (Alumno, Docente o Ambos)
                     query_alumnos = """
-                        SELECT u.matricula, u.nombre, 'PENDIENTE' as estado,
-                               (SELECT nombre FROM usuarios WHERE matricula = u.docente_id) as nombre_maestro
+                        SELECT u.matricula, u.nombre,
+                               (SELECT nombre FROM usuarios WHERE matricula = u.docente_id) as nombre_maestro,
+                               ra.matricula as tiene_alumno,
+                               ed.matricula as tiene_docente
                         FROM usuarios u
+                        LEFT JOIN respuestas_alumnos ra ON u.matricula = ra.matricula
                         LEFT JOIN evaluaciones_docentes ed ON u.matricula = ed.matricula
-                        WHERE u.rol='alumno' AND ed.matricula IS NULL
+                        WHERE u.rol='alumno' AND (ra.matricula IS NULL OR ed.matricula IS NULL)
                     """
                     if st.session_state['rol_actual'] == 'docente':
                         query_alumnos += " AND u.docente_id=%s"
@@ -516,11 +519,15 @@ else:
                 st.markdown(f"<h1>👨‍🏫 Panel del Personal Académico</h1>", unsafe_allow_html=True)
                 st.write("---")
                 
-                tab1, tab_crud, tab2 = st.tabs(["📝 Carga la información del Alumno", "👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico"])
+                # --- CONTROL DE PESTAÑAS DINÁMICAS (ADMIN NO VE LA CARGA DE CALIFICACIONES) ---
+                if st.session_state['rol_actual'] == 'administrativo':
+                    tab_crud, tab2 = st.tabs(["👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico"])
+                    tab1 = None
+                else:
+                    tab1, tab_crud, tab2 = st.tabs(["📝 Carga la información del Alumno", "👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico"])
                 
-                with tab1:
-                    # Se remueve el aviso. El formulario solo se renderiza si el rol es docente.
-                    if st.session_state['rol_actual'] == 'docente':
+                if tab1 is not None and st.session_state['rol_actual'] == 'docente':
+                    with tab1:
                         st.subheader("Registro de Desempeño Académico")
                         with st.form("form_docente"):
                             matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
@@ -569,12 +576,9 @@ else:
 
                 with tab_crud:
                     st.subheader("👥 Control y Gestión Institucional de Usuarios")
-                    
                     dict_usuarios_completo = {f"{row[1]} ({row[0]}) - [{row[2].upper()}]": row for row in lista_usuarios_crud}
                     
-                    # ---- SECCIÓN SUPERIOR: FORMULARIOS CRUD ----
                     col_c1, col_c2, col_c3 = st.columns(3)
-                    
                     with col_c1:
                         with st.expander("➕ Registrar Nuevo Usuario", expanded=False):
                             with st.form("form_alta_global"):
@@ -678,7 +682,6 @@ else:
                                             except mysql.connector.Error as err:
                                                 st.error(f"Error al eliminar: {err}")
 
-                    # ---- SECCIÓN INFERIOR: VISUALIZACIÓN DE LA TABLA ----
                     st.write("---")
                     st.write("### 📋 Vista General de la Tabla de Usuarios")
                     if lista_usuarios_crud:
@@ -692,25 +695,44 @@ else:
 
         with col2:
             with st.container(border=True):
-                st.markdown("### 📋 Alumnos Pendientes a Evaluar")
+                st.markdown("### 📋 Alumnos Pendientes")
                 if lista_alumnos_pendientes:
                     for row in lista_alumnos_pendientes:
-                        if st.session_state['rol_actual'] == 'administrativo':
-                            nombre_tutor = row[3] if row[3] else "Sin asignar"
+                        # Identificar qué información está haciendo falta exactamente
+                        tiene_alumno = row[3] is not None
+                        tiene_docente = row[4] is not None
+                        
+                        if not tiene_alumno and not tiene_docente:
+                            msg_pendiente = "⏳ Pendiente: Alumno y Docente"
+                            color_tag = "#ffb3b3" # Rojo suave
+                        elif not tiene_alumno:
+                            msg_pendiente = "📝 Pendiente: Cuestionario Alumno"
+                            color_tag = "#ffe6cc" # Naranja suave
+                        else:
+                            msg_pendiente = "📊 Pendiente: Evaluación Docente"
+                            color_tag = "#e6f2ff" # Azul suave
+
+                        if st.session_state['rol_actual'] == 'administrative' or st.session_state['rol_actual'] == 'administrativo':
+                            nombre_tutor = row[2] if row[2] else "Sin asignar"
                             st.markdown(f"""
-                            <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff9f2;'>
+                            <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
                                 <b>👤 Alumno:</b> {row[1]} (<small>{row[0]}</small>)<br>
                                 <b>👨‍🏫 Docente:</b> {nombre_tutor}<br>
-                                <span style='color:orange; font-weight:bold;'>[PENDIENTE]</span>
+                                <span style='background-color:{color_tag}; padding:2px 6px; border-radius:4px; font-size:12px; font-weight:bold; display:inline-block; margin-top:4px;'>{msg_pendiente}</span>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
-                            if st.button(f"👤 {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
-                                st.session_state['alumno_seleccionado_evaluar'] = row[0]
-                                st.rerun()
-                            st.markdown(f"<p style='text-align:center; color:orange; font-weight:bold; margin-top:-10px;'>[PENDIENTE]</p>", unsafe_allow_html=True)
+                            # Si es docente, los que requieran su evaluación funcionan como botón interactivo
+                            if not tiene_docente:
+                                if st.button(f"👤 {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
+                                    st.session_state['alumno_seleccionado_evaluar'] = row[0]
+                                    st.rerun()
+                            else:
+                                st.markdown(f"<div style='padding:5px; text-align:center; font-weight:bold;'>👤 {row[1]} ({row[0]})</div>", unsafe_allow_html=True)
+                            
+                            st.markdown(f"<p style='text-align:center; background-color:{color_tag}; font-weight:bold; font-size:12px; margin-top:-6px; border-radius:4px;'>{msg_pendiente}</p>", unsafe_allow_html=True)
                 else:
-                    st.success("🎉 ¡No quedan alumnos pendientes de evaluar en este periodo!")
+                    st.success("🎉 ¡No quedan alumnos pendientes en este periodo!")
 
     # --- RUTEO AUTOMÁTICO DE INTERFAZ SEGÚN EL ROL DE SESIÓN ---
     if st.session_state['rol_actual'] == 'alumno':
