@@ -5,8 +5,8 @@ import time
 import mysql.connector
 import os
 import traceback
-import io  
-import random 
+import io
+import random
 
 # Librerías de IA
 from sklearn.model_selection import train_test_split
@@ -64,7 +64,7 @@ class StreamlitLogger(Callback):
         msg = f"🧠 Entrenando Red Neuronal... Época {epoch+1}/20 | Precisión: {logs.get('accuracy', 0):.2%}"
         self.placeholder.info(msg)
 
-# --- CONEXIÓN DE CONFIANZA USANDO ST.SECRETS ---
+# --- CONEXIÓN DE CONFIANZA DIRECTA A AIVEN (PROTEGIDO) ---
 def get_db_connection():
     return mysql.connector.connect(
         host=st.secrets["DB_HOST"],
@@ -368,6 +368,15 @@ def mostrar_modulo_ia():
         st.subheader("📋 Diagnóstico de Alumnos Activos")
         df_estilado = st.session_state['df_resultados'].style.apply(colorear_filas, axis=1)
         st.dataframe(df_estilado, use_container_width=True)
+        
+        # Botón para descargar el reporte generado
+        st.download_button(
+            label="📥 Descargar Reporte Diagnóstico (Excel)",
+            data=st.session_state['excel_data'],
+            file_name="diagnostico_ia_siarr.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
 
 # --- PANTALLA: ALUMNO ---
 def pantalla_alumno():
@@ -536,7 +545,7 @@ def pantalla_docente():
                             except mysql.connector.Error as err:
                                 st.error(f"Error: {err}")
                 
-                # --- CRUD: EDITAR ALUMNO ---
+                # CRUD: EDITAR ALUMNO
                 with st.expander("📝 Editar Alumno Seleccionado"):
                     if not lista_alumnos:
                         st.write("No hay alumnos para editar.")
@@ -569,52 +578,40 @@ def pantalla_docente():
                                     time.sleep(0.5)
                                     st.rerun()
                                 except mysql.connector.Error as err:
-                                    st.error(f"Error al editar: {err}")
+                                    st.error(f"Error: {err}")
 
-                # --- CRUD: ELIMINAR ALUMNO ---
-                with st.expander("🗑️ Eliminar Alumno del Sistema"):
-                    if not lista_alumnos:
-                        st.write("No hay alumnos para eliminar.")
-                    else:
-                        dict_alumnos_del = {f"{row[1]} ({row[0]})": row[0] for row in lista_alumnos}
-                        alumno_a_eliminar_sel = st.selectbox("Selecciona el alumno a dar de baja definitiva:", list(dict_alumnos_del.keys()))
-                        matricula_a_eliminar = dict_alumnos_del[alumno_a_eliminar_sel]
-                        
-                        st.warning(f"⚠️ ¿Estás seguro de que deseas eliminar completamente al alumno con matrícula {matricula_a_eliminar}? Esta acción no se puede deshacer.")
-                        if st.button("🚨 Confirmar Eliminación Definitiva", type="primary", use_container_width=True):
-                            try:
-                                with get_db_connection() as conn:
-                                    with conn.cursor() as c:
-                                        if st.session_state['rol_actual'] == 'administrativo':
-                                            c.execute("DELETE FROM usuarios WHERE matricula=%s", (matricula_a_eliminar,))
-                                        else:
-                                            c.execute("DELETE FROM usuarios WHERE matricula=%s AND docente_id=%s", (matricula_a_eliminar, st.session_state['usuario_actual']))
-                                        conn.commit()
-                                st.success("🚀 Alumno eliminado correctamente de todos los registros.")
-                                time.sleep(0.5)
-                                st.rerun()
-                            except mysql.connector.Error as err:
-                                st.error(f"Error al eliminar: {err}")
-                                        
             with tab2:
                 mostrar_modulo_ia()
 
     with col2:
         with st.container(border=True):
-            st.markdown("### 📋 Alumnos Asignados")
-            st.write("Estatus de evaluación:")
+            st.markdown("### 👤 Tu Perfil")
+            st.info(f"**Usuario:**\n{st.session_state['usuario_actual']}")
+            st.info(f"**Nombre:**\n{st.session_state['nombre']}")
+            st.info(f"**Rol:**\n{str(st.session_state['rol_actual']).upper()}")
+            
+            if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True):
+                st.session_state['usuario_actual'] = None
+                st.session_state['rol_actual'] = None
+                st.session_state['nombre'] = ""
+                st.rerun()
+            
             st.write("---")
+            st.markdown("### 📋 Alumnos Asignados")
             if lista_alumnos:
                 for row in lista_alumnos:
-                    color_status = "🟢" if row[2] == "EVALUADO" else "🟡"
-                    st.write(f"{color_status} **{row[1]}** ({row[0]}) - {row[2]}")
+                    color_estado = "🟢" if row[2] == "EVALUADO" else "🟡"
+                    if st.button(f"{color_estado} {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
+                        st.session_state['alumno_seleccionado_evaluar'] = row[0]
+                        st.rerun()
             else:
-                st.write("Sin alumnos asignados.")
+                st.write("No tienes alumnos bajo tu cargo.")
 
-# --- CONTROLADOR CENTRAL DE PANTALLAS ---
+# --- ENRUTADOR PRINCIPAL ---
 if st.session_state['usuario_actual'] is None:
     login()
-elif st.session_state['rol_actual'] == 'alumno':
-    pantalla_alumno()
-elif st.session_state['rol_actual'] in ['docente', 'administrativo']:
-    pantalla_docente()
+else:
+    if st.session_state['rol_actual'] in ['docente', 'administrativo']:
+        pantalla_docente()
+    else:
+        pantalla_alumno()
