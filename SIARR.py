@@ -558,7 +558,7 @@ else:
                                     st.success("Alumno dado de alta.")
                                     time.sleep(0.5)
                                     st.rerun()
-                                catch mysql.connector.Error as err:
+                               except mysql.connector.Error as err:
                                     st.error(f"Error: {err}")
                     
                     # CRUD: EDITAR
