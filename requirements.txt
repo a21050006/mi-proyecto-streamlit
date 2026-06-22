@@ -1,7 +1,7 @@
-openpyxl
 streamlit
-mysql-connector-python
-tensorflow
 pandas
 numpy
+mysql-connector-python
 scikit-learn
+tensorflow
+openpyxl
