@@ -112,7 +112,9 @@ def init_db():
                     usuarios_prueba = [
                         ('admin', '123', 'administrativo', 'Coordinación General', 'admin@itsperote.edu.mx', None),
                         ('profe_juan', '123', 'docente', 'Ing. Juan Pérez', 'juan@itsperote.edu.mx', None),
-                        ('24050001', '123', 'alumno', 'María López', 'maria@itsperote.edu.mx', 'profe_juan')
+                        ('21050002', '123', 'alumno', 'Miguel Angel Sanchez', 'angel@gmail.com', 'profe_juan'),
+                        ('21050003', '123', 'alumno', 'Luz Rueda Tereso', 'rueda@gmail.com', 'profe_juan'),
+                        ('21050009', '123', 'alumno', 'Miguel Angel Sanchez', 'angel@gmail.com', 'profe_juan')
                     ]
                     c.executemany('INSERT INTO usuarios (matricula, password, rol, nombre, correo, docente_id) VALUES (%s, %s, %s, %s, %s, %s)', usuarios_prueba)
                     conn.commit()
@@ -198,34 +200,37 @@ else:
         st.markdown("### 🧠 Inteligencia Artificial con Aprendizaje Profundo")
         st.write("Detección de riesgo de reprobación en asignaturas de programación mediante análisis de desempeño predictivo.")
         
-        st.markdown("#### 📂 Configuración del Dataset de Entrenamiento")
-        col_da1, col_da2 = st.columns([2, 1])
-        with col_da1:
-            archivo_cargado = st.file_uploader("Agregar un nuevo dataset para el análisis (.csv, .xlsx)", type=["csv", "xlsx"], key="file_uploader_ia")
-            if archivo_cargado is not None:
-                try:
-                    if archivo_cargado.name.endswith('.csv'):
-                        st.session_state['dataset_personalizado'] = pd.read_csv(archivo_cargado)
-                    else:
-                        st.session_state['dataset_personalizado'] = pd.read_excel(archivo_cargado)
-                    st.success(f"✅ Dataset cargado e indexado en sesión: {archivo_cargado.name}")
-                except Exception as e:
-                    st.error(f"Error al leer el archivo: {e}")
-        with col_da2:
-            st.write("") 
-            st.write("") 
-            if st.button("🗑️ Borrar Dataset de Análisis", type="secondary", use_container_width=True):
-                st.session_state['dataset_personalizado'] = None
-                st.session_state['analisis_completado'] = False
-                st.session_state['df_resultados'] = None
-                st.warning("Dataset personalizado eliminado. Se usará el archivo local por defecto.")
-                time.sleep(0.5)
-                st.rerun()
+        if st.session_state['rol_actual'] != 'docente':
+            st.markdown("#### 📂 Configuración del Dataset de Entrenamiento")
+            col_da1, col_da2 = st.columns([2, 1])
+            with col_da1:
+                archivo_cargado = st.file_uploader("Agregar un nuevo dataset para el análisis (.csv, .xlsx)", type=["csv", "xlsx"], key="file_uploader_ia")
+                if archivo_cargado is not None:
+                    try:
+                        if archivo_cargado.name.endswith('.csv'):
+                            st.session_state['dataset_personalizado'] = pd.read_csv(archivo_cargado)
+                        else:
+                            st.session_state['dataset_personalizado'] = pd.read_excel(archivo_cargado)
+                        st.success(f"✅ Dataset cargado e indexado en sesión: {archivo_cargado.name}")
+                    except Exception as e:
+                        st.error(f"Error al leer el archivo: {e}")
+            with col_da2:
+                st.write("") 
+                st.write("") 
+                if st.button("🗑️ Borrar Dataset de Análisis", type="secondary", use_container_width=True):
+                    st.session_state['dataset_personalizado'] = None
+                    st.session_state['analisis_completado'] = False
+                    st.session_state['df_resultados'] = None
+                    st.warning("Dataset personalizado eliminado. Se usará el archivo local por defecto.")
+                    time.sleep(0.5)
+                    st.rerun()
 
-        if st.session_state['dataset_personalizado'] is not None:
-            st.info("ℹ️ Actualmente utilizando el dataset guardado en la sesión de forma permanente.")
+            if st.session_state['dataset_personalizado'] is not None:
+                st.info("ℹ️ Actualmente utilizando el dataset guardado en la sesión de forma permanente.")
+            else:
+                st.info("ℹ️ Utilizando el dataset histórico predeterminado del sistema.")
         else:
-            st.info("ℹ️ Utilizando el dataset histórico predeterminado del sistema.")
+            st.info("ℹ️ El modelo utilizará el dataset histórico institucional predeterminado.")
 
         if st.button("🚀 Iniciar Análisis de Red Neuronal", type="primary", use_container_width=True):
             consola_placeholder = st.empty()
@@ -381,7 +386,6 @@ else:
                         
                     df_resultados = pd.DataFrame(resultados_custom)
                     
-                    # --- CONFIGURACIÓN DEL EXCEL CON COLORES INTELIGENTES ---
                     buffer = io.BytesIO()
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                         df_resultados.to_excel(writer, index=False, sheet_name='Diagnóstico')
@@ -481,7 +485,6 @@ else:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as c:
-                    # 1. Filtro inteligente: Detecta de quién está pendiente la información (Alumno, Docente o Ambos)
                     query_alumnos = """
                         SELECT u.matricula, u.nombre,
                                (SELECT nombre FROM usuarios WHERE matricula = u.docente_id) as nombre_maestro,
@@ -499,7 +502,6 @@ else:
                         c.execute(query_alumnos)
                     lista_alumnos_pendientes = c.fetchall()
 
-                    # 2. Lista para el módulo CRUD
                     if st.session_state['rol_actual'] == 'administrativo':
                         c.execute("SELECT matricula, nombre, rol, correo, password, docente_id FROM usuarios")
                         lista_usuarios_crud = c.fetchall()
@@ -519,7 +521,6 @@ else:
                 st.markdown(f"<h1>👨‍🏫 Panel del Personal Académico</h1>", unsafe_allow_html=True)
                 st.write("---")
                 
-                # --- CONTROL DE PESTAÑAS DINÁMICAS (ADMIN NO VE LA CARGA DE CALIFICACIONES) ---
                 if st.session_state['rol_actual'] == 'administrativo':
                     tab_crud, tab2 = st.tabs(["👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico"])
                     tab1 = None
@@ -530,20 +531,20 @@ else:
                     with tab1:
                         st.subheader("Registro de Desempeño Académico")
                         with st.form("form_docente"):
-                            matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
+                            matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluuar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
                             
                             c_1, c_2, c_3 = st.columns(3)
-                            with c_1: promedio = st.number_input("Promedio General", min_value=0.0, max_value=100.0, value=70.0)
+                            with c_1: promedio = st.number_input("Promedio General", min_value=0.0, max_value=100.0, value=0.0)
                             with c_2: reprobadas = st.number_input("Materias Reprobadas", min_value=0, value=0)
-                            with c_3: calif_ultima = st.number_input("Calificación Última Materia", min_value=0, max_value=100, value=70)
+                            with c_3: calif_ultima = st.number_input("Calificación Última Materia", min_value=0, max_value=100, value=0)
                                 
-                            asistencia_clases = st.slider("Asistencia (1-5)", 1, 5, 4)
-                            cumplimiento = st.slider("Cumplimiento (1-5)", 1, 5, 4)
-                            participacion = st.slider("Participación (1-5)", 1, 5, 3)
-                            practicas = st.slider("Prácticas (1-5)", 1, 5, 3)
-                            uso_plataformas = st.slider("Uso Plataformas (1-5)", 1, 5, 3)
+                            asistencia_clases = st.slider("Asistencia (1-5)", 1, 5, 1)
+                            cumplimiento = st.slider("Cumplimiento (1-5)", 1, 5, 1)
+                            participacion = st.slider("Participación (1-5)", 1, 5, 1)
+                            practicas = st.slider("Prácticas (1-5)", 1, 5, 1)
+                            uso_plataformas = st.slider("Uso Plataformas (1-5)", 1, 5, 1)
                             
-                            dias_asistencia = st.number_input("Días Totales Asistidos a la Semana", min_value=0, max_value=7, value=5)
+                            dias_asistencia = st.number_input("Días Totales Asistidos a la Semana", min_value=0, max_value=7, value=0)
                                 
                             if st.form_submit_button("Actualizar Expediente Escolar", type="primary", use_container_width=True):
                                 if not matricula_ingresada:
@@ -687,6 +688,19 @@ else:
                     if lista_usuarios_crud:
                         df_crud_vista = pd.DataFrame(lista_usuarios_crud, columns=["Matrícula", "Nombre", "Rol", "Correo", "Contraseña", "ID Docente Asignado"])
                         st.dataframe(df_crud_vista, use_container_width=True)
+                        
+                        # --- IMPLEMENTACIÓN DE LA DESCARGA EXCEL PARA ESTA TABLA ---
+                        buffer_crud = io.BytesIO()
+                        with pd.ExcelWriter(buffer_crud, engine='openpyxl') as writer:
+                            df_crud_vista.to_excel(writer, index=False, sheet_name='Usuarios Registrados')
+                        
+                        st.download_button(
+                            label="📥 Descargar Tabla de Usuarios (Excel)",
+                            data=buffer_crud.getvalue(),
+                            file_name=f"Vista_General_Usuarios_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
                     else:
                         st.info("No existen usuarios registrados bajo este criterio.")
 
@@ -698,21 +712,20 @@ else:
                 st.markdown("### 📋 Alumnos Pendientes")
                 if lista_alumnos_pendientes:
                     for row in lista_alumnos_pendientes:
-                        # Identificar qué información está haciendo falta exactamente
                         tiene_alumno = row[3] is not None
                         tiene_docente = row[4] is not None
                         
                         if not tiene_alumno and not tiene_docente:
                             msg_pendiente = "⏳ Pendiente: Alumno y Docente"
-                            color_tag = "#ffb3b3" # Rojo suave
+                            color_tag = "#ffb3b3" 
                         elif not tiene_alumno:
                             msg_pendiente = "📝 Pendiente: Cuestionario Alumno"
-                            color_tag = "#ffe6cc" # Naranja suave
+                            color_tag = "#ffe6cc" 
                         else:
                             msg_pendiente = "📊 Pendiente: Evaluación Docente"
-                            color_tag = "#e6f2ff" # Azul suave
+                            color_tag = "#e6f2ff" 
 
-                        if st.session_state['rol_actual'] == 'administrative' or st.session_state['rol_actual'] == 'administrativo':
+                        if st.session_state['rol_actual'] == 'administrativo':
                             nombre_tutor = row[2] if row[2] else "Sin asignar"
                             st.markdown(f"""
                             <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
@@ -722,7 +735,6 @@ else:
                             </div>
                             """, unsafe_allow_html=True)
                         else:
-                            # Si es docente, los que requieran su evaluación funcionan como botón interactivo
                             if not tiene_docente:
                                 if st.button(f"👤 {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
                                     st.session_state['alumno_seleccionado_evaluar'] = row[0]
