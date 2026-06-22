@@ -531,7 +531,7 @@ else:
                     with tab1:
                         st.subheader("Registro de Desempeño Académico")
                         with st.form("form_docente"):
-                            matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluuar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
+                            matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
                             
                             c_1, c_2, c_3 = st.columns(3)
                             with c_1: promedio = st.number_input("Promedio General", min_value=0.0, max_value=100.0, value=0.0)
@@ -684,24 +684,31 @@ else:
                                                 st.error(f"Error al eliminar: {err}")
 
                     st.write("---")
-                    st.write("### 📋 Vista General de la Tabla de Usuarios")
+                    
+                    # --- DISEÑO MEJORADO PARA EVITAR BOTONES EXTRAS ---
                     if lista_usuarios_crud:
                         df_crud_vista = pd.DataFrame(lista_usuarios_crud, columns=["Matrícula", "Nombre", "Rol", "Correo", "Contraseña", "ID Docente Asignado"])
-                        st.dataframe(df_crud_vista, use_container_width=True)
                         
-                        # --- IMPLEMENTACIÓN DE LA DESCARGA EXCEL PARA ESTA TABLA ---
                         buffer_crud = io.BytesIO()
                         with pd.ExcelWriter(buffer_crud, engine='openpyxl') as writer:
                             df_crud_vista.to_excel(writer, index=False, sheet_name='Usuarios Registrados')
                         
-                        st.download_button(
-                            label="📥 Descargar Tabla de Usuarios (Excel)",
-                            data=buffer_crud.getvalue(),
-                            file_name=f"Vista_General_Usuarios_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
+                        # Creamos dos columnas para poner el título y el botón de Excel alineados perfectamente
+                        col_tit_tabla, col_btn_tabla = st.columns([6.5, 3.5])
+                        with col_tit_tabla:
+                            st.write("### 📋 Vista General de la Tabla de Usuarios")
+                        with col_btn_tabla:
+                            st.download_button(
+                                label="📥 Exportar esta Tabla a Excel",
+                                data=buffer_crud.getvalue(),
+                                file_name=f"Vista_General_Usuarios_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                            
+                        st.dataframe(df_crud_vista, use_container_width=True)
                     else:
+                        st.write("### 📋 Vista General de la Tabla de Usuarios")
                         st.info("No existen usuarios registrados bajo este criterio.")
 
                 with tab2:
