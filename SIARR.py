@@ -167,7 +167,7 @@ if st.session_state['usuario_actual'] is None:
                             
                             if resultado:
                                 st.session_state['usuario_actual'] = resultado[0] 
-                                st.session_state['rol_actual'] = resultado[2] # Guarda 'administrative'
+                                st.session_state['rol_actual'] = resultado[2] 
                                 st.session_state['nombre'] = resultado[3]          
                                 if resultado[2] == 'administrative':
                                     st.session_state['tab_actual'] = "👥 Gestión de Usuarios (CRUD)"
@@ -468,7 +468,7 @@ else:
                     calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     
                     if st.form_submit_button("Guardar Respuestas", type="primary", use_container_width=True):
-                        if any(v is None for v in [sexo, semestre, sistema, horas_estudio, dias_estudio, motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet]):
+                        if any(v is None for v in [sexo, semestre, systema, horas_estudio, dias_estudio, motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet]):
                             st.error("❌ Todos los campos son obligatorios. Por favor, responde el cuestionario por completo antes de guardar.")
                         else:
                             try:
@@ -598,8 +598,6 @@ else:
                                                 st.session_state['alumno_seleccionado_evaluar'] = "" 
                                                 time.sleep(0.5)
                                                 st.rerun()
-                                try:
-                                    pass
                                 except mysql.connector.Error as err:
                                     st.error(f"Error al guardar evaluación: {err}")
 
