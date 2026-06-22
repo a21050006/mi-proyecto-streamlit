@@ -167,12 +167,16 @@ if st.session_state['usuario_actual'] is None:
                             
                             if resultado:
                                 st.session_state['usuario_actual'] = resultado[0] 
-                                st.session_state['rol_actual'] = resultado[2] 
+                                rol_bd = str(resultado[2]).lower()
+                                st.session_state['rol_actual'] = rol_bd 
                                 st.session_state['nombre'] = resultado[3]          
-                                if resultado[2] == 'administrative':
+                                
+                                # Verificación flexible para cualquier variación de 'admin'
+                                if 'admin' in rol_bd:
                                     st.session_state['tab_actual'] = "👥 Gestión de Usuarios (CRUD)"
                                 else:
                                     st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
+                                    
                                 st.success("¡Acceso concedido!")
                                 time.sleep(0.5)
                                 st.rerun()
@@ -205,7 +209,7 @@ else:
         st.markdown("### 🧠 Inteligencia Artificial con Aprendizaje Profundo")
         st.write("Detección de riesgo de reprobación en asignaturas de programación mediante análisis de desempeño predictivo.")
         
-        if st.session_state['rol_actual'] != 'docente':
+        if 'admin' in st.session_state['rol_actual']:
             st.markdown("#### 📂 Configuración del Dataset de Entrenamiento")
             col_da1, col_da2 = st.columns([2, 1])
             with col_da1:
@@ -468,7 +472,7 @@ else:
                     calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     
                     if st.form_submit_button("Guardar Respuestas", type="primary", use_container_width=True):
-                        if any(v is None for v in [sexo, semestre, systema, horas_estudio, dias_estudio, motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet]):
+                        if any(v is None for v in [sexo, semestre, sistema, horas_estudio, dias_estudio, motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet]):
                             st.error("❌ Todos los campos son obligatorios. Por favor, responde el cuestionario por completo antes de guardar.")
                         else:
                             try:
@@ -521,7 +525,7 @@ else:
                         c.execute(query_alumnos)
                     lista_alumnos_pendientes = c.fetchall()
 
-                    if st.session_state['rol_actual'] == 'administrative':
+                    if 'admin' in st.session_state['rol_actual']:
                         c.execute("SELECT matricula, nombre, rol, correo, password, docente_id FROM usuarios")
                         lista_usuarios_crud = c.fetchall()
                         
@@ -610,13 +614,13 @@ else:
                     with col_c1:
                         with st.expander("➕ Registrar Nuevo Usuario", expanded=False):
                             with st.form("form_alta_global"):
-                                label_u = "Matrícula / Usuario" if st.session_state['rol_actual'] == 'administrative' else "Matrícula del Alumno"
+                                label_u = "Matrícula / Usuario" if 'admin' in st.session_state['rol_actual'] else "Matrícula del Alumno"
                                 al_matricula = st.text_input(label_u).strip()
                                 al_nombre = st.text_input("Nombre Completo")
                                 al_correo = st.text_input("Correo Electrónico")
                                 al_password = st.text_input("Contraseña por Defecto", value="123")
                                 
-                                if st.session_state['rol_actual'] == 'administrative':
+                                if 'admin' in st.session_state['rol_actual']:
                                     al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrative"])
                                     doc_asig = st.selectbox("Docente Tutor (Solo Alumnos)", list(dict_docentes.keys()))
                                     al_docente_id = dict_docentes[doc_asig]
@@ -653,7 +657,7 @@ else:
                                     edit_correo = st.text_input("Modificar Correo", value=datos_originales[3])
                                     edit_password = st.text_input("Modificar Contraseña", value=datos_originales[4])
                                     
-                                    if st.session_state['rol_actual'] == 'administrative':
+                                    if 'admin' in st.session_state['rol_actual']:
                                         roles_disp = ["alumno", "docente", "administrative"]
                                         idx_r = roles_disp.index(datos_originales[2]) if datos_originales[2] in roles_disp else 0
                                         edit_rol = st.selectbox("Modificar Rol", roles_disp, index=idx_r)
@@ -757,7 +761,7 @@ else:
                             msg_pendiente = "📊 Pendiente: Evaluación Docente"
                             color_tag = "#e6f2ff" 
 
-                        if st.session_state['rol_actual'] == 'administrative':
+                        if 'admin' in st.session_state['rol_actual']:
                             nombre_tutor = row[2] if row[2] else "Sin asignar"
                             st.markdown(f"""
                             <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
@@ -782,5 +786,5 @@ else:
     # --- RUTEO AUTOMÁTICO DE INTERFAZ SEGÚN EL ROL DE SESIÓN ---
     if st.session_state['rol_actual'] == 'alumno':
         pantalla_alumno()
-    elif st.session_state['rol_actual'] in ['docente', 'administrative']:
+    elif st.session_state['rol_actual'] == 'docente' or 'admin' in str(st.session_state['rol_actual']).lower():
         pantalla_docente()
