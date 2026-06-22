@@ -20,19 +20,48 @@ from openpyxl.styles import PatternFill
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
-# --- CSS PERSONALIZADO (Limpio y Responsivo Nativo) ---
+# --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
     <style>
-        .block-container {
-            padding-top: 1.5rem !important;
-            padding-bottom: 1.5rem !important;
-            padding-left: 1.5rem !important;
-            padding-right: 1.5rem !important;
-            max-width: 100% !important;
-        }
+        /* Ocultar menú y marca de agua de Streamlit */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+        
+        /* 💻 Diseño para Computadora (Pantallas grandes) */
+        .block-container {
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 3rem !important;
+            padding-right: 3rem !important;
+            max-width: 100% !important;
+        }
+
+        /* 📱 Diseño Específico para Celulares (Pantallas de menos de 768px) */
+        @media (max-width: 768px) {
+            .block-container {
+                padding-top: 1rem !important;
+                padding-bottom: 1rem !important;
+                padding-left: 0.5rem !important;  /* Márgenes más pequeños para aprovechar el espacio */
+                padding-right: 0.5rem !important;
+            }
+            
+            /* Reducir el tamaño de los títulos en el celular para que no se desborden */
+            h1 { font-size: 1.8rem !important; }
+            h2 { font-size: 1.5rem !important; }
+            h3 { font-size: 1.2rem !important; }
+            
+            /* Asegurar que los botones ocupen todo el ancho en el celular para tocarlos fácil */
+            .stButton>button { 
+                width: 100% !important; 
+                padding: 0.5rem !important;
+            }
+            
+            /* Ajustar las tablas para que tengan scroll horizontal suave */
+            .stDataFrame {
+                overflow-x: auto;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
