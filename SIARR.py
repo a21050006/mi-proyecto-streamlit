@@ -167,9 +167,9 @@ if st.session_state['usuario_actual'] is None:
                             
                             if resultado:
                                 st.session_state['usuario_actual'] = resultado[0] 
-                                st.session_state['rol_actual'] = resultado[2]     
+                                st.session_state['rol_actual'] = resultado[2] # Guarda 'administrative'
                                 st.session_state['nombre'] = resultado[3]          
-                                if resultado[2] == 'administrativo':
+                                if resultado[2] == 'administrative':
                                     st.session_state['tab_actual'] = "👥 Gestión de Usuarios (CRUD)"
                                 else:
                                     st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
@@ -598,6 +598,8 @@ else:
                                                 st.session_state['alumno_seleccionado_evaluar'] = "" 
                                                 time.sleep(0.5)
                                                 st.rerun()
+                                try:
+                                    pass
                                 except mysql.connector.Error as err:
                                     st.error(f"Error al guardar evaluación: {err}")
 
@@ -610,14 +612,14 @@ else:
                     with col_c1:
                         with st.expander("➕ Registrar Nuevo Usuario", expanded=False):
                             with st.form("form_alta_global"):
-                                label_u = "Matrícula / Usuario" if st.session_state['rol_actual'] == 'administrativo' else "Matrícula del Alumno"
+                                label_u = "Matrícula / Usuario" if st.session_state['rol_actual'] == 'administrative' else "Matrícula del Alumno"
                                 al_matricula = st.text_input(label_u).strip()
                                 al_nombre = st.text_input("Nombre Completo")
                                 al_correo = st.text_input("Correo Electrónico")
                                 al_password = st.text_input("Contraseña por Defecto", value="123")
                                 
-                                if st.session_state['rol_actual'] == 'administrativo':
-                                    al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrativo"])
+                                if st.session_state['rol_actual'] == 'administrative':
+                                    al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrative"])
                                     doc_asig = st.selectbox("Docente Tutor (Solo Alumnos)", list(dict_docentes.keys()))
                                     al_docente_id = dict_docentes[doc_asig]
                                 else:
