@@ -5,4 +5,5 @@ mysql-connector-python
 scikit-learn
 tensorflow
 openpyxl
-plotly
+matplotlib
+seaborn
