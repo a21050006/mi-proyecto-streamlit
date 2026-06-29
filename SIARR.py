@@ -9,7 +9,6 @@ import io
 import random 
 import hashlib  # 🔒 Importado para cifrado MD5
 import re       # 🔒 Importado para validación de políticas de contraseña
-import plotly.express as px # 📊 Dashboard Dinámico (NUEVO)
 
 # Librerías de IA y Formato Excel
 from sklearn.model_selection import train_test_split
@@ -19,56 +18,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Input
 from tensorflow.keras.callbacks import Callback
 from openpyxl.styles import PatternFill
-
-# =========================================================================
-# 📊 NUEVO MÓDULO: DOS DASHBOARDS PLOTLY (TOTALMENTE INDEPENDIENTE)
-# =========================================================================
-def modulo_dashboards():
-    st.markdown("---")
-    st.markdown("## 📊 Módulo de Indicadores y Rendimiento")
-    
-    # Intentamos recuperar datos reales del análisis de IA guardado en sesión
-    if st.session_state.get('df_resultados') is not None and not st.session_state['df_resultados'].empty:
-        df_grafica = st.session_state['df_resultados'].copy()
-        # Limpiamos los nombres para la leyenda por si tienen emojis
-        df_grafica['Resultado_Limpio'] = df_grafica['Resultado IA'].astype(str).str.replace(' ⚠️ ', '').str.replace(' ✅ ', '')
-    else:
-        # Datos muestra por defecto únicamente si no se ha ejecutado el análisis aún
-        df_grafica = pd.DataFrame({
-            'Resultado_Limpio': ['ESTABLE', 'RIESGO', 'ESTABLE', 'ESTABLE', 'RIESGO'],
-            'Semestre': [1, 3, 2, 4, 3],
-            'Nivel de Riesgo': [' Bajo', ' Alto', ' Bajo', ' Bajo', ' Medio']
-        })
-
-    # Creamos las dos columnas visuales para alojar los dos Dashboards solicitados
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("1. Estatus General de Alumnos")
-        fig1 = px.pie(
-            df_grafica, 
-            names='Resultado_Limpio', 
-            title="Proporción de Alumnos: ESTABLE vs RIESGO",
-            color='Resultado_Limpio',
-            color_discrete_map={'ESTABLE': '#2ecc71', 'RIESGO': '#ff5722'}
-        )
-        fig1.update_layout(margin=dict(t=50, b=20, l=20, r=20))
-        st.plotly_chart(fig1, use_container_width=True)
-        
-    with col2:
-        st.subheader("2. Distribución de Riesgo por Semestre")
-        fig2 = px.histogram(
-            df_grafica, 
-            x='Semestre', 
-            color='Resultado_Limpio',
-            barmode='group',
-            title="Alumnos en Riesgo vs Estables por Semestre",
-            labels={'Semestre': 'Semestre Actual', 'count': 'Cantidad de Alumnos', 'Resultado_Limpio': 'Condición'},
-            color_discrete_map={'ESTABLE': '#2ecc71', 'RIESGO': '#ff5722'}
-        )
-        fig2.update_layout(margin=dict(t=50, b=20, l=20, r=20))
-        st.plotly_chart(fig2, use_container_width=True)
-# =========================================================================
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="SIARR", page_icon=" 🎓 ", layout="wide")
@@ -332,7 +281,7 @@ else:
                     st.rerun()
 
         if os.path.exists("dataset_compartido_admin.xlsx") or os.path.exists("dataset_compartido_admin.csv"):
-            st.info(" ℹ️  Currently utilizando el dataset compartido cargado por el Administrador.")
+            st.info(" ℹ️  Actualmente utilizando el dataset compartido cargado por el Administrador.")
         else:
             st.info(" ℹ️  Utilizando el dataset histórico predeterminado del sistema institucional.")
 
@@ -528,9 +477,6 @@ else:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
             )
-            
-            # 📊 SE INVOCA AQUÍ EL MÓDULO DE DASHBOARDS AUTOMÁTICAMENTE TRAS MOSTRAR LA TABLA DE IA
-            modulo_dashboards()
 
     # --- PANTALLA: ALUMNO ---
     def pantalla_alumno():
@@ -634,31 +580,260 @@ else:
 
                 cols_menu = st.columns(len(opciones_tabs))
                 for idx, opcion in enumerate(opciones_tabs):
-                    if cols_menu[idx].button(opcion, use_container_width=True, type="primary" if st.session_state['tab_actual'] == opcion else "secondary"):
-                        st.session_state['tab_actual'] = opcion
-                        st.rerun()
-
+                    with cols_menu[idx]:
+                        color_tipo = "primary" if st.session_state['tab_actual'] == opcion else "secondary"
+                        if st.button(opcion, type=color_tipo, use_container_width=True, key=f"nav_{opcion}"):
+                            st.session_state['tab_actual'] = opcion
+                            st.rerun()
                 st.write("---")
 
-                # RUTA DINÁMICA DEL MENÚ DE TABS MANTENIENDO LA LÓGICA DE TU INTERFAZ ORIGINAL
-                if st.session_state['tab_actual'] == " 🚀  Ejecutar Diagnóstico":
-                    mostrar_modulo_ia()
-                elif st.session_state['tab_actual'] == " 📝  Carga la información del Alumno":
-                    st.write("### Sección para Evaluar Alumnos (Lógica Original del Docente)...")
+                # --- VISTA: CARGA LA INFORMACIÓN DEL ALUMNO ---
+                if st.session_state['tab_actual'] == " 📝  Carga la información del Alumno" and st.session_state['rol_actual'] == 'docente':
+                    st.subheader("Registro de Desempeño Académico")
+                    with st.form("form_docente"):
+                        matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
+
+                        c_1, c_2, c_3 = st.columns(3)
+                        with c_1: promedio = st.number_input("Promedio General", min_value=0.0, max_value=100.0, value=0.0)
+                        with c_2: reprobadas = st.number_input("Materias Reprobadas", min_value=0, value=0)
+                        with c_3: calif_ultima = st.number_input("Calificación Última Materia", min_value=0, max_value=100, value=0)
+
+                        asistencia_clases = st.slider("Asistencia (1-5)", 1, 5, 1)
+                        cumplimiento = st.slider("Cumplimiento (1-5)", 1, 5, 1)
+                        participacion = st.slider("Participación (1-5)", 1, 5, 1)
+                        practicas = st.slider("Prácticas (1-5)", 1, 5, 1)
+                        uso_plataformas = st.slider("Uso Plataformas (1-5)", 1, 5, 1)
+                        dias_asistencia = st.number_input("Días Totales Asistidos a la Semana", min_value=0, max_value=7, value=0)
+
+                        if st.form_submit_button("Actualizar Expediente Escolar", type="primary", use_container_width=True):
+                            if not matricula_ingresada:
+                                st.error(" ❌  Debes escribir una matrícula.")
+                            else:
+                                try:
+                                    with get_db_connection() as conn:
+                                        with conn.cursor() as c:
+                                            c.execute("SELECT nombre, rol, docente_id FROM usuarios WHERE matricula = %s", (matricula_ingresada,))
+                                            usuario_encontrado = c.fetchone()
+
+                                            if not usuario_encontrado:
+                                                st.error(" ❌  La matrícula no existe.")
+                                            elif usuario_encontrado[2] != st.session_state['usuario_actual']:
+                                                st.error(" ❌  Este alumno no está asignado bajo tu cargo.")
+                                            else:
+                                                consulta = '''REPLACE INTO evaluaciones_docentes
+                                                (matricula, promedio, reprobadas, calif_ultima, dias_asistencia,
+                                                asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas)
+                                                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+                                                c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia,
+                                                asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
+                                                conn.commit()
+                                                st.success(f" 🎉  ¡Expediente de {usuario_encontrado[0]} guardado!")
+                                                st.session_state['alumno_seleccionado_evaluar'] = ""
+                                                time.sleep(0.5)
+                                                st.rerun()
+                                except mysql.connector.Error as err:
+                                    st.error(f"Error al guardar evaluación: {err}")
+
+                # --- VISTA: GESTIÓN DE USUARIOS (CRUD) ---
                 elif st.session_state['tab_actual'] == " 👥  Gestión de Usuarios (CRUD)":
-                    st.write("### Panel de Control de Usuarios (Lógica Original del Administrador)...")
+                    st.subheader(" 👥  Control y Gestión Institucional de Usuarios")
+                    dict_usuarios_completo = {f"{row[1]} ({row[0]}) - [{row[2].upper()}]": row for row in lista_usuarios_crud}
+
+                    col_c1, col_c2, col_c3 = st.columns(3)
+                    with col_c1:
+                        with st.expander(" ➕  Registrar Nuevo Usuario", expanded=False):
+                            with st.form("form_alta_global"):
+                                label_u = "Matrícula / Usuario" if 'admin' in st.session_state['rol_actual'] else "Matrícula del Alumno"
+                                al_matricula = st.text_input(label_u).strip()
+                                al_nombre = st.text_input("Nombre Completo")
+                                al_correo = st.text_input("Correo Electrónico")
+                                # 🔒 Se sugiere una contraseña inicial por defecto que sí cumpla las reglas Moodle
+                                al_password = st.text_input("Contraseña por Defecto", value="Moodle2026!")
+
+                                if 'admin' in st.session_state['rol_actual']:
+                                    al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrative"])
+                                    doc_asig = st.selectbox("Docente Tutor (Solo Alumnos)", list(dict_docentes.keys()))
+                                    al_docente_id = dict_docentes[doc_asig]
+                                else:
+                                    al_rol = "alumno"
+                                    al_docente_id = st.session_state['usuario_actual']
+
+                                if st.form_submit_button("Guardar Usuario", type="primary", use_container_width=True):
+                                    if not al_matricula or not al_nombre:
+                                        st.error(" ❌  Matrícula y Nombre Obligatorios.")
+                                    else:
+                                        # 🔒 Validación de complejidad tipo Moodle antes del Alta
+                                        es_valida, msg_err = validar_password_moodle(al_password)
+                                        if not es_valida:
+                                            st.error(f" ❌  La contraseña no cumple la directiva de Moodle: {msg_err}")
+                                        else:
+                                            try:
+                                                with get_db_connection() as conn:
+                                                    with conn.cursor() as c:
+                                                        # Ciframos el texto plano a MD5 antes de guardarlo
+                                                        hashed_p = hash_password(al_password)
+                                                        c.execute("INSERT INTO usuarios (matricula, password, rol, nombre, correo, docente_id) VALUES (%s, %s, %s, %s, %s, %s)",
+                                                            (al_matricula, hashed_p, al_rol, al_nombre, al_correo, al_docente_id))
+                                                        conn.commit()
+                                                        st.success(" 🎉  Usuario dado de alta exitosamente.")
+                                                        time.sleep(0.5)
+                                                        st.rerun()
+                                            except mysql.connector.Error as err:
+                                                st.error(f"Error: {err}")
+
+                    with col_c2:
+                        with st.expander(" 📝  Editar Usuario Seleccionado", expanded=False):
+                            if not dict_usuarios_completo:
+                                st.write("No hay usuarios disponibles.")
+                            else:
+                                seleccionado_edit = st.selectbox("Buscar usuario a modificar:", list(dict_usuarios_completo.keys()), key="sel_crud_edit")
+                                datos_originales = dict_usuarios_completo[seleccionado_edit]
+
+                                with st.form("form_edicion_global"):
+                                    edit_nombre = st.text_input("Modificar Nombre Completo", value=datos_originales[1])
+                                    edit_correo = st.text_input("Modificar Correo", value=datos_originales[3])
+                                    # Muestra el hash actual
+                                    edit_password = st.text_input("Modificar Contraseña (Escribe nueva o deja el hash)", value=datos_originales[4])
+
+                                    if 'admin' in st.session_state['rol_actual']:
+                                        roles_disp = ["alumno", "docente", "administrative"]
+                                        idx_r = roles_disp.index(datos_originales[2]) if datos_originales[2] in roles_disp else 0
+                                        edit_rol = st.selectbox("Modificar Rol", roles_disp, index=idx_r)
+
+                                        idx_d = 0
+                                        keys_doc = list(dict_docentes.keys())
+                                        for pos, k in enumerate(keys_doc):
+                                            if dict_docentes[k] == datos_originales[5]:
+                                                idx_d = pos
+                                                break
+                                        edit_doc_asig = st.selectbox("Modificar Docente Tutor", keys_doc, index=idx_d)
+                                        edit_docente_id = dict_docentes[edit_doc_asig]
+                                    else:
+                                        edit_rol = "alumno"
+                                        edit_docente_id = st.session_state['usuario_actual']
+
+                                    if st.form_submit_button("Actualizar Cambios", type="primary", use_container_width=True):
+                                        # 🔒 Lógica de Edición inteligente para no re-cifrar un hash ya existente
+                                        podes_continuar = True
+                                        if edit_password == datos_originales[4]:
+                                            final_password = edit_password  # Mantiene el hash MD5 intacto
+                                        else:
+                                            # Es una contraseña nueva, la validamos con la política Moodle
+                                            es_valida, msg_err = validar_password_moodle(edit_password)
+                                            if not es_valida:
+                                                st.error(f" ❌  La nueva contraseña no cumple con Moodle: {msg_err}")
+                                                podes_continuar = False
+                                            else:
+                                                final_password = hash_password(edit_password)
+
+                                        if podes_continuar:
+                                            try:
+                                                with get_db_connection() as conn:
+                                                    with conn.cursor() as c:
+                                                        c.execute("""UPDATE usuarios
+                                                        SET nombre=%s, correo=%s, password=%s, rol=%s, docente_id=%s
+                                                        WHERE matricula=%s""",
+                                                        (edit_nombre, edit_correo, final_password, edit_rol, edit_docente_id, datos_originales[0]))
+                                                        conn.commit()
+                                                        st.success(" 🎉  Datos de usuario actualizados.")
+                                                        time.sleep(0.5)
+                                                        st.rerun()
+                                            except mysql.connector.Error as err:
+                                                st.error(f"Error al actualizar: {err}")
+
+                    with col_c3:
+                        with st.expander(" 🗑️  Eliminar Usuario", expanded=False):
+                            if not dict_usuarios_completo:
+                                st.write("No hay registros.")
+                            else:
+                                seleccionado_del = st.selectbox("Buscar usuario a remover:", list(dict_usuarios_completo.keys()), key="sel_crud_del")
+                                datos_eliminar = dict_usuarios_completo[seleccionado_del]
+
+                                st.warning(f"¿Remover a {datos_eliminar[1]} ({datos_eliminar[0]})? Se eliminarán en cascada sus encuestas y calificaciones.")
+                                with st.form("form_baja_global"):
+                                    if st.form_submit_button(" ❌  Confirmar Eliminación Absolute", type="primary", use_container_width=True):
+                                        if datos_eliminar[0] == st.session_state['usuario_actual']:
+                                            st.error("No es posible auto-eliminarse del sistema.")
+                                        else:
+                                            try:
+                                                with get_db_connection() as conn:
+                                                    with conn.cursor() as c:
+                                                        c.execute("DELETE FROM usuarios WHERE matricula=%s", (datos_eliminar[0],))
+                                                        conn.commit()
+                                                        st.success(" 🗑️  Registro revocado con éxito.")
+                                                        time.sleep(0.5)
+                                                        st.rerun()
+                                            except mysql.connector.Error as err:
+                                                st.error(f"Error al eliminar: {err}")
+
+                    st.write("---")
+                    if lista_usuarios_crud:
+                        df_crud_vista = pd.DataFrame(lista_usuarios_crud, columns=["Matrícula", "Nombre", "Rol", "Correo", "Contraseña (Hash MD5)", "ID Docente Asignado"])
+                        buffer_crud = io.BytesIO()
+                        with pd.ExcelWriter(buffer_crud, engine='openpyxl') as writer:
+                            df_crud_vista.to_excel(writer, index=False, sheet_name='Usuarios Registrados')
+
+                        col_tit_tabla, col_btn_tabla = st.columns([8.5, 1.5])
+                        with col_tit_tabla:
+                            st.write("###  📋  Vista General de la Tabla de Usuarios")
+                        with col_btn_tabla:
+                            st.download_button(
+                                label=" 📥  Excel",
+                                data=buffer_crud.getvalue(),
+                                file_name=f"Vista_General_Usuarios_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True
+                            )
+                        st.dataframe(df_crud_vista, use_container_width=True)
+                    else:
+                        st.write("###  📋  Vista General de la Tabla de Usuarios")
+                        st.info("No existen usuarios registrados bajo este criterio.")
+
+                # --- VISTA: EJECUTAR DIAGNÓSTICO ---
+                elif st.session_state['tab_actual'] == " 🚀  Ejecutar Diagnóstico":
+                    mostrar_modulo_ia()
 
         with col2:
             with st.container(border=True):
-                st.markdown("###  📋  Lista de Alumnos Pendientes")
-                if len(lista_alumnos_pendientes) == 0:
-                    st.success(" ✅  Todos tus alumnos asignados tienen sus expedientes completos.")
-                else:
-                    for al in lista_alumnos_pendientes:
-                        st.warning(f"**Matrícula:** {al[0]}\n\n**Nombre:** {al[1]}")
+                st.markdown("###  📋  Alumnos Pendientes")
+                if lista_alumnos_pendientes:
+                    for row in lista_alumnos_pendientes:
+                        tiene_alumno = row[3] is not None
+                        tiene_docente = row[4] is not None
 
-    # --- CONTROLADOR CENTRAL DE VISTAS (ROUTE) ---
+                        if not tiene_alumno and not tiene_docente:
+                            msg_pendiente = " ⏳  Pendiente: Alumno y Docente"
+                            color_tag = "#ffb3b3"
+                        elif not tiene_alumno:
+                            msg_pendiente = " 📝  Pendiente: Cuestionario Alumno"
+                            color_tag = "#ffe6cc"
+                        else:
+                            msg_pendiente = " 📊  Pendiente: Evaluación Docente"
+                            color_tag = "#e6f2ff"
+
+                        if 'admin' in st.session_state['rol_actual']:
+                            nombre_tutor = row[2] if row[2] else "Sin asignar"
+                            st.markdown(f"""
+                            <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
+                                <b> 👤  Alumno:</b> {row[1]} (<small>{row[0]}</small>)<br>
+                                <b> 👨‍🏫  Docente:</b> {nombre_tutor}<br>
+                                <span style='background-color:{color_tag}; padding:2px 6px; border-radius:4px; font-size:12px; font-weight:bold; display:inline-block; margin-top:4px;'>{msg_pendiente}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            if not tiene_docente:
+                                if st.button(f" 👤  {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
+                                    st.session_state['alumno_seleccionado_evaluar'] = row[0]
+                                    st.session_state['tab_actual'] = " 📝  Carga la información del Alumno"
+                                    st.rerun()
+                            else:
+                                st.markdown(f"<div style='padding:5px; text-align:center; font-weight:bold;'> 👤  {row[1]} ({row[0]})</div>", unsafe_allow_html=True)
+                            st.markdown(f"<p style='text-align:center; background-color:{color_tag}; font-weight:bold; font-size:12px; margin-top:-6px; border-radius:4px;'>{msg_pendiente}</p>", unsafe_allow_html=True)
+                else:
+                    st.success(" 🎉  ¡No quedan alumnos pendientes en este periodo!")
+
+    # --- RUTEO AUTOMÁTICO DE INTERFAZ SEGÚN EL ROL DE SESIÓN ---
     if st.session_state['rol_actual'] == 'alumno':
         pantalla_alumno()
-    else:
+    elif st.session_state['rol_actual'] == 'docente' or 'admin' in str(st.session_state['rol_actual']).lower():
         pantalla_docente()
