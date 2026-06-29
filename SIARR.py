@@ -20,7 +20,6 @@ from tensorflow.keras.callbacks import Callback
 from openpyxl.styles import PatternFill
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
 
 # --- FUNCIONES DE SEGURIDAD (MD5 y Moodle) ---
 def generar_md5(texto):
@@ -97,9 +96,9 @@ if 'df_resultados' not in st.session_state:
 if 'excel_data' not in st.session_state:
     st.session_state['excel_data'] = None
 if 'df_crudo_entrenamiento' not in st.session_state:
-    st.session_state['df_crudo_entrenamiento'] = None # Para extraer variables originales
+    st.session_state['df_crudo_entrenamiento'] = None 
 
-# Variables para el Dashboard Drill-Down (Navegación por Niveles)
+# Variables para el Dashboard Drill-Down
 if 'dash_nivel' not in st.session_state:
     st.session_state['dash_nivel'] = 1
 if 'dash_estado_acad' not in st.session_state:
@@ -248,7 +247,6 @@ else:
             st.session_state['rol_actual'] = None
             st.session_state['nombre'] = ""
             st.session_state['tab_actual'] = None
-            # Resetear estado del dashboard
             st.session_state['dash_nivel'] = 1
             st.session_state['dash_estado_acad'] = None
             st.session_state['dash_semestre'] = None
@@ -328,7 +326,8 @@ else:
                         st.error("❌ Error: No se encontró ningún archivo de base de datos histórico en el servidor.")
                         return
 
-                st.session_state['df_crudo_entrenamiento'] = df.copy() # Guardamos para el Dashboard
+                # Guardamos copia original para extraer info rica en el Dashboard
+                st.session_state['df_crudo_entrenamiento'] = df.copy()
 
                 cols_ignorar = ['Matrícula', 'Matricula', 'matricula', 'Nombre', 'Nombre_completo', 'ID', 'Id']
                 df = df.drop(columns=[c for c in cols_ignorar if c in df.columns], errors='ignore')
@@ -447,7 +446,7 @@ else:
                         else:
                             motivos_str = "Buen rendimiento general"
                             
-                        # Guardar todos los datos para que el Dashboard pueda extraer variables ricas
+                        # Guardamos info valiosa para el Dashboard
                         resultados_custom.append({
                             "Matrícula": fila.get('Matrícula'),
                             "Nombre": fila.get('Nombre_completo'),
@@ -457,6 +456,7 @@ else:
                             "Nivel_Estres": fila.get('Nivel_Estres'),
                             "Promedio_General": fila.get('Promedio_General'),
                             "Asistencia_Clases": fila.get('Asistencia_Clases'),
+                            "Horas_Estudio": fila.get('Horas_Estudio_Semana'),
                             "Resultado IA": estado,
                             "Nivel de Riesgo": nivel,
                             "Prob. Exacta (%)": f"{prob_num * 100:.2f}%",
@@ -497,7 +497,6 @@ else:
             st.markdown("---")
             st.subheader("📋 Diagnóstico de Alumnos Activos")
             
-            # Solo mostramos columnas relevantes para la vista tabular rápida
             cols_vista = ['Matrícula', 'Nombre', 'Semestre', 'Resultado IA', 'Nivel de Riesgo', 'Prob. Exacta (%)', 'Factores Críticos']
             df_vista_rapida = st.session_state['df_resultados'][cols_vista]
             
@@ -513,7 +512,7 @@ else:
             )
 
     # ==========================================
-    # MÓDULO: DASHBOARD INTERACTIVO (Plotly Completo con Gráficas del Jupyter)
+    # MÓDULO: DASHBOARD INTERACTIVO INNOVADOR (Con Gráficas Completas del Original)
     # ==========================================
     def mostrar_dashboard_interactivo():
         if not st.session_state.get('analisis_completado') or st.session_state.get('df_resultados') is None:
@@ -523,7 +522,7 @@ else:
         df = st.session_state['df_resultados'].copy()
         df_crudo = st.session_state.get('df_crudo_entrenamiento') 
         
-        # --- RECATEGORIZACIÓN INTELIGENTE A 3 NIVELES ---
+        # Segmentación
         if 'Prob. Exacta (%)' in df.columns:
             probs = df['Prob. Exacta (%)'].astype(str).str.rstrip('%').astype(float) / 100.0
         else:
@@ -538,13 +537,12 @@ else:
         df['Estado_Dashboard'] = np.select(condiciones, opciones, default='🟢 Buen Rendimiento')
 
         # ------------------------------------------
-        # NIVEL 1: VISTA GENERAL (Donut & Matriz Correlación)
+        # NIVEL 1: VISTA GENERAL (Donut & Matriz de Correlación)
         # ------------------------------------------
         if st.session_state.dash_nivel == 1:
             st.markdown("<h2 style='text-align: center; color: #2C3E50;'>📊 Visión Estratégica Institucional</h2>", unsafe_allow_html=True)
             st.write("---")
             
-            # Tarjetas de Métricas de Alto Impacto
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("👥 Total Evaluados", len(df))
             col2.metric("🔴 Estado Crítico", len(df[df['Estado_Dashboard'] == '🔴 Reprobados / Crítico']))
@@ -553,16 +551,13 @@ else:
             
             st.write("<br>", unsafe_allow_html=True)
             
-            # Fila de gráficas principales
             col_chart, col_heat = st.columns([1, 1.2])
             
-            # 1. Gráfica de Donut (Distribución General)
+            # Gráfica 1: Donut Chart (Conservada)
             with col_chart:
-                st.markdown("#### Distribución de Estatus")
+                st.markdown("#### Distribución de Estatus Académico")
                 fig_donut = px.pie(
-                    df, 
-                    names='Estado_Dashboard', 
-                    hole=0.45,
+                    df, names='Estado_Dashboard', hole=0.45,
                     color='Estado_Dashboard',
                     color_discrete_map={
                         '🔴 Reprobados / Crítico': '#e74c3c', 
@@ -570,39 +565,32 @@ else:
                         '🟢 Buen Rendimiento': '#2ecc71'
                     }
                 )
-                fig_donut.update_traces(
-                    textposition='inside', 
-                    textinfo='percent+label', 
-                    marker=dict(line=dict(color='#FFFFFF', width=2))
-                )
+                fig_donut.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=2)))
                 fig_donut.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
                 st.plotly_chart(fig_donut, use_container_width=True)
                 
-            # 2. Matriz de Correlación Estilizada (Rescatada del Jupyter)
+            # Gráfica 2: Matriz de Correlación (Del Jupyter Original)
             with col_heat:
                 st.markdown("#### Impacto Global de Variables Base (Matriz Correlación)")
                 if df_crudo is not None and not df_crudo.empty:
-                    # Seleccionamos variables numéricas clave para el heatmap
+                    # Buscamos columnas originales numéricas para hacer la matriz
                     cols_num = df_crudo.select_dtypes(include=[np.number]).columns.tolist()
-                    cols_claves = [c for c in cols_num if c in ['Promedio', 'promedio', 'Estres', 'estres', 'Asistencias', 'Semestre', 'Calificacion', 'Resultado']]
-                    if len(cols_claves) > 2:
+                    cols_claves = [c for c in cols_num if c.lower() in ['promedio', 'estres', 'asistencias', 'semestre', 'calificacion', 'resultado', 'nivel_estres']]
+                    
+                    if len(cols_claves) >= 3:
                         corr_matrix = df_crudo[cols_claves].corr().round(2)
                         fig_heat = px.imshow(
-                            corr_matrix, 
-                            text_auto=True, 
-                            aspect="auto",
-                            color_continuous_scale='RdBu_r'
+                            corr_matrix, text_auto=True, aspect="auto", color_continuous_scale='RdBu_r'
                         )
                         fig_heat.update_layout(margin=dict(t=20, b=20, l=20, r=20))
                         st.plotly_chart(fig_heat, use_container_width=True)
                     else:
-                        st.info("No hay suficientes variables numéricas crudas para generar la Matriz de Correlación.")
+                        st.info("No hay suficientes variables numéricas crudas para generar la Matriz de Correlación de forma confiable.")
                 else:
-                    st.info("Matriz de correlación no disponible en datos sintéticos actuales.")
+                    st.info("Sincroniza un dataset completo en la vista anterior para habilitar la Matriz de Correlación profunda.")
 
             st.write("---")
             st.markdown("### 🔍 Explorar Población Específica (Drill-Down):")
-            st.info("Selecciona una de las 3 poblaciones para desglosar su comportamiento sociodemográfico y por semestre.")
             c1, c2, c3 = st.columns(3)
             if c1.button("🚨 Ver Críticos / Reprobados", use_container_width=True):
                 st.session_state.dash_estado_acad = '🔴 Reprobados / Crítico'
@@ -618,7 +606,7 @@ else:
                 st.rerun()
 
         # ------------------------------------------
-        # NIVEL 2: POR SEMESTRE Y SOCIODEMOGRÁFICO (Treemap y Boxplot)
+        # NIVEL 2: FILTROS (Treemap, Boxplot & Contexto)
         # ------------------------------------------
         elif st.session_state.dash_nivel == 2:
             if st.button("⬅️ Regresar a Vista General", type="secondary"):
@@ -632,48 +620,62 @@ else:
             df_filtrado = df[df['Estado_Dashboard'] == estado]
             
             if df_filtrado.empty:
-                st.info("No hay alumnos clasificados en esta categoría en este momento.")
+                st.info("No hay alumnos clasificados en esta categoría.")
             else:
                 col_tree, col_box = st.columns([1, 1.2])
                 
-                # 3. Gráfica Treemap (Distribución por Semestre)
+                # Gráfica 3: Treemap de Semestres
                 with col_tree:
                     conteo_semestres = df_filtrado['Semestre'].value_counts().reset_index()
                     conteo_semestres.columns = ['Semestre', 'Volumen']
                     conteo_semestres['Etiqueta_Semestre'] = "Semestre " + conteo_semestres['Semestre'].astype(str)
                     
                     esquema_color = 'Greens' if 'Buen' in estado else ('Reds' if 'Crítico' in estado else 'Oranges')
-                    
                     fig_tree = px.treemap(
-                        conteo_semestres, 
-                        path=['Etiqueta_Semestre'], 
-                        values='Volumen',
-                        color='Volumen',
-                        color_continuous_scale=esquema_color
+                        conteo_semestres, path=['Etiqueta_Semestre'], values='Volumen',
+                        color='Volumen', color_continuous_scale=esquema_color
                     )
                     fig_tree.update_traces(textinfo="label+value", textfont=dict(size=18, color="white"))
-                    fig_tree.update_layout(title="Volumen por Semestre", margin=dict(t=30, l=10, r=10, b=10))
+                    fig_tree.update_layout(title="Distribución por Semestre", margin=dict(t=30, l=10, r=10, b=10), height=350)
                     st.plotly_chart(fig_tree, use_container_width=True)
 
-                # 4. Boxplot (Promedio General y Nivel de Estrés por Sistema Escolar) - Rescatado del Jupyter
+                # Gráfica 4: Boxplot Sistema Escolar vs Promedio (Del Jupyter Original)
                 with col_box:
-                    if 'Promedio_General' in df_filtrado.columns and 'Sistema_Escolar' in df_filtrado.columns:
-                        df_filtrado['Sistema_Etiqueta'] = df_filtrado['Sistema_Escolar'].map({0.0: 'Escolarizado', 1.0: 'Semiescolarizado', 0: 'Escolarizado', 1: 'Semiescolarizado'}).fillna('General')
-                        fig_box = px.box(
-                            df_filtrado, 
-                            x="Sistema_Etiqueta", 
-                            y="Promedio_General", 
-                            color="Sistema_Etiqueta",
-                            title="Promedio General vs Sistema Escolar",
-                            color_discrete_sequence=px.colors.qualitative.Pastel
+                    try:
+                        # Convertimos las variables sintéticas o reales para que el boxplot funcione bien
+                        df_filtrado_box = df_filtrado.copy()
+                        if 'Sistema_Escolar' in df_filtrado_box.columns and 'Promedio_General' in df_filtrado_box.columns:
+                            # Mapeamos 0/1 a texto legible
+                            df_filtrado_box['Sistema'] = df_filtrado_box['Sistema_Escolar'].map({0.0: 'Escolarizado', 1.0: 'Semiescolarizado', 0: 'Escolarizado', 1: 'Semiescolarizado'}).fillna('General')
+                            fig_box = px.box(
+                                df_filtrado_box, x="Sistema", y="Promedio_General", color="Sistema",
+                                title="Promedio General vs Sistema Escolar",
+                                color_discrete_sequence=px.colors.qualitative.Pastel
+                            )
+                            fig_box.update_layout(showlegend=False, margin=dict(t=40, l=10, r=10, b=10), height=350)
+                            st.plotly_chart(fig_box, use_container_width=True)
+                        else:
+                            st.info("Variables de Promedio y Sistema Escolar no disponibles en este grupo.")
+                    except:
+                        pass
+                        
+                # Gráfica 5: Calidad de Internet (Del Jupyter Original, extraída de df_crudo para análisis general del grupo)
+                if df_crudo is not None and 'Calidad_Internet' in df_crudo.columns:
+                    st.markdown("#### 📶 Infraestructura: Calidad de Internet en el grupo seleccionado")
+                    # Filtramos en el dataset crudo basado en los alumnos seleccionados
+                    matriculas_seleccionadas = df_filtrado['Matrícula'].tolist()
+                    df_crudo_filtrado = df_crudo[df_crudo['Matrícula'].isin(matriculas_seleccionadas)]
+                    if not df_crudo_filtrado.empty:
+                        fig_bar = px.histogram(
+                            df_crudo_filtrado, x="Calidad_Internet", nbins=5,
+                            title="Distribución de Calidad de Conexión a Internet (1 a 5)",
+                            color_discrete_sequence=['#3498db']
                         )
-                        fig_box.update_layout(showlegend=False, margin=dict(t=40, l=10, r=10, b=10))
-                        st.plotly_chart(fig_box, use_container_width=True)
-                    else:
-                        st.info("Variables de Promedio y Sistema Escolar no detectadas para el Boxplot.")
+                        fig_bar.update_layout(yaxis_title="Cantidad de Alumnos", margin=dict(t=40, l=10, r=10, b=10), height=300)
+                        st.plotly_chart(fig_bar, use_container_width=True)
                 
                 st.write("---")
-                st.markdown("#### ⚙️ Aislar Variables Críticas por Semestre:")
+                st.markdown("#### ⚙️ Aislar Causales por Semestre Específico:")
                 c_sel, c_btn = st.columns([3, 1])
                 with c_sel:
                     sem_opciones = sorted(df_filtrado['Semestre'].unique())
@@ -686,7 +688,7 @@ else:
                         st.rerun()
 
         # ------------------------------------------
-        # NIVEL 3: VARIABLES DE IMPACTO (Lollipop, Radar y Scatter)
+        # NIVEL 3: VARIABLES DE IMPACTO (Lollipop, Radar, Scatter)
         # ------------------------------------------
         elif st.session_state.dash_nivel == 3:
             if st.button("⬅️ Regresar a Desglose de Semestres", type="secondary"):
@@ -704,7 +706,7 @@ else:
             col_izq, col_der = st.columns([1.2, 1])
 
             if 'Riesgo' in estado or 'Crítico' in estado:
-                # 5. Gráfica Lollipop (Factores Específicos Extraídos de la IA)
+                # Gráfica 6: Lollipop (Factores Específicos Extraídos)
                 with col_izq:
                     st.markdown("#### 📉 Factores Críticos (Frecuencia)")
                     vars_criticas = []
@@ -734,58 +736,60 @@ else:
                                 line=dict(color="#c0392b", width=3)
                             )
                         fig_lol.update_layout(
-                            xaxis_title="Alumnos Afectados",
-                            yaxis_title="",
-                            template="plotly_white",
-                            yaxis={'categoryorder':'total ascending'},
-                            margin=dict(l=10, r=30, t=10, b=20),
-                            height=350
+                            xaxis_title="Alumnos Afectados", yaxis_title="",
+                            template="plotly_white", yaxis={'categoryorder':'total ascending'},
+                            margin=dict(l=10, r=30, t=10, b=20), height=350
                         )
                         st.plotly_chart(fig_lol, use_container_width=True)
                     else:
                         st.info("No se hallaron factores específicos dominantes en este segmento.")
                         
-                # 6. Scatter Plot (Nivel de Estrés vs Asistencias) - Del Jupyter exploratorio
+                # Gráfica 7: Scatter Plot de Nivel de Estrés vs Asistencias (Del Jupyter Original)
                 with col_der:
                     st.markdown("#### 🌪️ Relación: Estrés vs Asistencia")
                     if 'Nivel_Estres' in df_sem.columns and 'Asistencia_Clases' in df_sem.columns:
                         fig_scatter = px.scatter(
-                            df_sem, 
-                            x="Asistencia_Clases", 
-                            y="Nivel_Estres",
-                            size="Promedio_General",
-                            color="Promedio_General",
+                            df_sem, x="Asistencia_Clases", y="Nivel_Estres",
+                            size="Promedio_General" if 'Promedio_General' in df_sem.columns else None,
+                            color="Promedio_General" if 'Promedio_General' in df_sem.columns else None,
                             hover_name="Nombre",
-                            color_continuous_scale="Reds"
+                            color_continuous_scale="Reds",
+                            title="A mayor estrés, ¿menor asistencia?"
                         )
-                        fig_scatter.update_layout(margin=dict(t=10, l=10, r=10, b=10), height=350)
+                        fig_scatter.update_layout(margin=dict(t=30, l=10, r=10, b=10), height=350)
                         st.plotly_chart(fig_scatter, use_container_width=True)
                     else:
-                        st.write("Faltan variables para este gráfico.")
+                        st.write("Faltan variables para este gráfico relacional.")
             
             else:
-                # 7. Gráfica de Radar (Para Alumnos Estables)
+                # Gráfica 8: Radar Chart (Alumnos Estables)
                 with col_izq:
                     st.markdown("#### 📈 Fortalezas Consistentes (Perfil Radar)")
                     categorias = ['Asistencias Constantes', 'Entrega de Tareas', 'Nivel de Motivación', 'Uso de Plataformas', 'Prácticas Realizadas']
                     fig_radar = go.Figure()
                     fig_radar.add_trace(go.Scatterpolar(
-                        r=[5, 4.8, 4.2, 4.7, 4.5], # Valores representativos de éxito
-                        theta=categorias,
-                        fill='toself',
-                        fillcolor='rgba(46, 204, 113, 0.4)',
-                        line=dict(color='#2ecc71', width=2),
-                        name='Fortalezas'
+                        r=[5, 4.8, 4.2, 4.7, 4.5],
+                        theta=categorias, fill='toself', fillcolor='rgba(46, 204, 113, 0.4)',
+                        line=dict(color='#2ecc71', width=2), name='Fortalezas'
                     ))
                     fig_radar.update_layout(
                         polar=dict(radialaxis=dict(visible=True, range=[0, 5])),
-                        showlegend=False,
-                        margin=dict(l=40, r=40, t=10, b=10),
-                        height=350
+                        showlegend=False, margin=dict(l=40, r=40, t=10, b=10), height=350
                     )
                     st.plotly_chart(fig_radar, use_container_width=True)
+                    
+                # Gráfica 9: Distribución Horas Estudio (Del Jupyter Original)
                 with col_der:
-                    st.info("✅ Los alumnos de este segmento se mantienen estables principalmente por métricas sólidas en las dimensiones base ilustradas en el radar.")
+                    st.markdown("#### 🕒 Horas de Estudio Semanal")
+                    if 'Horas_Estudio' in df_sem.columns:
+                        fig_bar2 = px.histogram(
+                            df_sem, x="Horas_Estudio", nbins=6,
+                            color_discrete_sequence=['#2ecc71']
+                        )
+                        fig_bar2.update_layout(yaxis_title="Cantidad de Alumnos", margin=dict(t=10, l=10, r=10, b=10), height=350)
+                        st.plotly_chart(fig_bar2, use_container_width=True)
+                    else:
+                        st.info("✅ Los alumnos se mantienen estables principalmente por métricas sólidas.")
 
             st.write("---")
             if st.button("👥 Ver Expedientes y Lista Nominal de Alumnos (Nivel 4)", type="primary"):
@@ -809,7 +813,6 @@ else:
             df_final = df[(df['Estado_Dashboard'] == estado) & (df['Semestre'] == semestre)].copy()
             columnas_vista = ['Matrícula', 'Nombre', 'Docente Asignado', 'Prob. Exacta (%)', 'Factores Críticos']
             
-            # Función CSS de Pandas para dar estilo a los porcentajes
             def estilizar_probabilidad(val):
                 try:
                     num = float(str(val).replace('%', ''))
@@ -823,7 +826,6 @@ else:
                 df_vista = df_final[columnas_vista].style.map(estilizar_probabilidad, subset=['Prob. Exacta (%)'])
                 st.dataframe(df_vista, use_container_width=True, height=400)
                 
-                # Descarga del reporte final
                 csv = df_final[columnas_vista].to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📥 Exportar Lista a Excel/CSV",
