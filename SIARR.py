@@ -1,8 +1,4 @@
-Aquí tienes el código completo de tu archivo `SIARR.py`. He integrado el nuevo **Módulo de Dashboards con Plotly** como una función totalmente independiente llamada `modulo_dashboards()`.
 
-Para cumplir estrictamente con tus condiciones, **no se modificó absolutamente nada de tu interfaz original, ni tus estilos CSS, ni la lógica de control de sesiones ni tus pantallas actuales**. El bloque se insertó limpiamente abajo de las librerías de IA y la invocación se configuró dinámicamente de forma automática:
-
-```python
 import streamlit as st
 import pandas as pd
 import numpy as np
