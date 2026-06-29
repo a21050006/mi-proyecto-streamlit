@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -663,5 +662,3 @@ else:
         pantalla_alumno()
     else:
         pantalla_docente()
-
-```
