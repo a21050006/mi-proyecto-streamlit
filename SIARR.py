@@ -9,6 +9,8 @@ import io
 import random
 import hashlib
 import re
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Librerías de IA y Formato Excel
 from sklearn.model_selection import train_test_split
@@ -92,6 +94,14 @@ if 'df_resultados' not in st.session_state:
 if 'excel_data' not in st.session_state:
     st.session_state['excel_data'] = None
 
+# --- VARIABLES DE SESIÓN PARA EL DASHBOARD INTERACTIVO ---
+if 'dash_nivel' not in st.session_state:
+    st.session_state['dash_nivel'] = 1
+if 'dash_estado_acad' not in st.session_state:
+    st.session_state['dash_estado_acad'] = None
+if 'dash_semestre' not in st.session_state:
+    st.session_state['dash_semestre'] = None
+
 class StreamlitLogger(Callback):
     def __init__(self, placeholder):
         self.placeholder = placeholder
@@ -144,7 +154,6 @@ def init_db():
 
                 c.execute("SELECT COUNT(*) FROM usuarios")
                 if c.fetchone()[0] == 0:
-                    # Las contraseñas iniciales ahora cumplen Moodle y se cifran
                     pwd_default = generar_md5('Temporal123*')
                     usuarios_prueba = [
                         ('admin', pwd_default, 'administrative', 'Coordinación General', 'admin@itsperote.edu.mx', None),
@@ -197,7 +206,6 @@ if st.session_state['usuario_actual'] is None:
                         st.error("Introduce tu usuario y contraseña.")
                     else:
                         try:
-                            # Cifrar password ingresado
                             password_cifrado = generar_md5(password)
                             
                             with get_db_connection() as conn:
@@ -235,6 +243,10 @@ else:
             st.session_state['rol_actual'] = None
             st.session_state['nombre'] = ""
             st.session_state['tab_actual'] = None
+            # Resetear estado del dashboard al cerrar sesión
+            st.session_state['dash_nivel'] = 1
+            st.session_state['dash_estado_acad'] = None
+            st.session_state['dash_semestre'] = None
             st.rerun()
 
     def colorear_filas(row):
@@ -482,6 +494,139 @@ else:
                 use_container_width=True
             )
 
+    # --- MÓDULO: DASHBOARD INTERACTIVO (Drill-Down) ---
+    def mostrar_dashboard_interactivo():
+        if not st.session_state['analisis_completado'] or st.session_state['df_resultados'] is None:
+            st.warning("⚠️ Primero debes ejecutar el diagnóstico de IA en la pestaña '🚀 Ejecutar Diagnóstico' para visualizar el Dashboard.")
+            return
+
+        df = st.session_state['df_resultados']
+        
+        # Estética de gráficas
+        sns.set_theme(style="whitegrid", rc={"grid.linestyle": "--", "grid.alpha": 0.5})
+        plt.rcParams['font.family'] = 'sans-serif'
+        
+        # --- NIVEL 1: VISTA GENERAL ---
+        if st.session_state['dash_nivel'] == 1:
+            st.subheader("Nivel 1: Visión General del Desempeño Académico")
+            
+            conteo_estados = df['Resultado IA'].value_counts()
+            
+            fig, ax = plt.subplots(figsize=(8, 4))
+            colores = {'⚠️ RIESGO': '#e74c3c', '✅ ESTABLE': '#2ecc71'}
+            
+            sns.barplot(x=conteo_estados.index, y=conteo_estados.values, palette=colores, ax=ax)
+            ax.set_title("Distribución de Alumnos (Riesgo vs Estable)", fontsize=14)
+            ax.set_ylabel("Cantidad de Alumnos")
+            st.pyplot(fig)
+            
+            st.write("Selecciona una población para analizar en profundidad:")
+            c1, c2 = st.columns(2)
+            if c1.button("🚨 Analizar Alumnos en Riesgo / Reprobación", use_container_width=True):
+                st.session_state['dash_estado_acad'] = '⚠️ RIESGO'
+                st.session_state['dash_nivel'] = 2
+                st.rerun()
+            if c2.button("✅ Analizar Alumnos con Buen Rendimiento", use_container_width=True):
+                st.session_state['dash_estado_acad'] = '✅ ESTABLE'
+                st.session_state['dash_nivel'] = 2
+                st.rerun()
+
+        # --- NIVEL 2: FILTRADO POR SEMESTRE ---
+        elif st.session_state['dash_nivel'] == 2:
+            if st.button("⬅️ Regresar a la Vista General (Nivel 1)", type="secondary"):
+                st.session_state['dash_nivel'] = 1
+                st.session_state['dash_estado_acad'] = None
+                st.rerun()
+                
+            estado_texto = "en Riesgo" if st.session_state['dash_estado_acad'] == '⚠️ RIESGO' else "con Buen Rendimiento"
+            st.subheader(f"Nivel 2: Desglose por Semestres ({estado_texto})")
+            
+            df_filtrado = df[df['Resultado IA'] == st.session_state['dash_estado_acad']]
+            
+            if df_filtrado.empty:
+                st.info("No hay alumnos en esta categoría.")
+            else:
+                conteo_semestres = df_filtrado['Semestre'].value_counts().sort_index()
+                
+                fig, ax = plt.subplots(figsize=(10, 4))
+                color_bar = '#e74c3c' if st.session_state['dash_estado_acad'] == '⚠️ RIESGO' else '#2ecc71'
+                sns.barplot(x=conteo_semestres.index, y=conteo_semestres.values, color=color_bar, ax=ax)
+                ax.set_title("Población por Semestre", fontsize=12)
+                ax.set_xlabel("Semestre")
+                ax.set_ylabel("Número de Alumnos")
+                st.pyplot(fig)
+                
+                st.write("---")
+                semestres_disponibles = sorted(df_filtrado['Semestre'].unique())
+                sem_seleccionado = st.selectbox("Selecciona un semestre específico para analizar variables de influencia:", semestres_disponibles)
+                
+                if st.button("🔍 Analizar Variables de este Semestre", type="primary"):
+                    st.session_state['dash_semestre'] = sem_seleccionado
+                    st.session_state['dash_nivel'] = 3
+                    st.rerun()
+
+        # --- NIVEL 3: VARIABLES DE INFLUENCIA ---
+        elif st.session_state['dash_nivel'] == 3:
+            if st.button("⬅️ Regresar al Desglose por Semestres (Nivel 2)", type="secondary"):
+                st.session_state['dash_nivel'] = 2
+                st.session_state['dash_semestre'] = None
+                st.rerun()
+                
+            estado_texto = "Riesgo" if st.session_state['dash_estado_acad'] == '⚠️ RIESGO' else "Buen Rendimiento"
+            st.subheader(f"Nivel 3: Variables de Impacto (Semestre {st.session_state['dash_semestre']} - {estado_texto})")
+            
+            df_sem = df[(df['Resultado IA'] == st.session_state['dash_estado_acad']) & 
+                        (df['Semestre'] == st.session_state['dash_semestre'])]
+            
+            if st.session_state['dash_estado_acad'] == '⚠️ RIESGO':
+                # Procesar el texto de factores para contar frecuencias de variables críticas
+                variables_criticas = []
+                for factores in df_sem['Factores Críticos']:
+                    partes = str(factores).split(" | ")
+                    for p in partes:
+                        var_nombre = p.split(" (")[0]
+                        if var_nombre and var_nombre != "nan":
+                            variables_criticas.append(var_nombre)
+                            
+                if variables_criticas:
+                    conteo_vars = pd.Series(variables_criticas).value_counts().head(5)
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    sns.barplot(y=conteo_vars.index, x=conteo_vars.values, palette="Reds_r", ax=ax)
+                    ax.set_title("Top Variables que influyen negativamente en este Semestre")
+                    ax.set_xlabel("Frecuencia como factor crítico")
+                    st.pyplot(fig)
+                else:
+                    st.write("No hay datos de variables críticas suficientes.")
+            else:
+                st.success("✅ Los alumnos de este grupo mantienen un buen rendimiento general por su consistencia en evaluaciones y asistencia.")
+                
+            st.write("---")
+            if st.button("👥 Ver Lista Nominal de Alumnos (Nivel 4)", type="primary"):
+                st.session_state['dash_nivel'] = 4
+                st.rerun()
+
+        # --- NIVEL 4: DETALLE NOMINAL ---
+        elif st.session_state['dash_nivel'] == 4:
+            if st.button("⬅️ Regresar al Análisis de Variables (Nivel 3)", type="secondary"):
+                st.session_state['dash_nivel'] = 3
+                st.rerun()
+                
+            st.subheader("Nivel 4: Lista Detallada Nominal")
+            
+            df_final = df[(df['Resultado IA'] == st.session_state['dash_estado_acad']) & 
+                          (df['Semestre'] == st.session_state['dash_semestre'])]
+            
+            columnas_mostrar = ['Matrícula', 'Nombre', 'Prob. Exacta (%)', 'Factores Críticos']
+            st.dataframe(df_final[columnas_mostrar], use_container_width=True)
+            
+            csv = df_final[columnas_mostrar].to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar Reporte Específico (CSV)",
+                data=csv,
+                file_name=f"reporte_nivel4_sem{st.session_state['dash_semestre']}.csv",
+                mime='text/csv'
+            )
+
     # --- PANTALLA: ALUMNO ---
     def pantalla_alumno():
         col1, col2 = st.columns([2.2, 0.8])
@@ -579,7 +724,8 @@ else:
                 st.markdown(f"<h1>👨‍🏫 Panel del Personal Académico</h1>", unsafe_allow_html=True)
                 st.write("---")
                 
-                opciones_tabs = ["👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico"]
+                # SE AGREGÓ EL DASHBOARD INTERACTIVO A LAS OPCIONES
+                opciones_tabs = ["👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico", "📊 Dashboard Interactivo"]
                 if st.session_state['rol_actual'] == 'docente':
                     opciones_tabs = ["📝 Carga la información del Alumno"] + opciones_tabs
                     
@@ -672,7 +818,6 @@ else:
                                         st.error("❌ La contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.")
                                     else:
                                         try:
-                                            # Cifrado con MD5
                                             password_hash = generar_md5(al_password)
                                             with get_db_connection() as conn:
                                                 with conn.cursor() as c:
@@ -719,7 +864,6 @@ else:
                                         pwd_a_guardar = edit_password
                                         valido = True
                                         
-                                        # Si el admin borró el Hash y puso una nueva contraseña...
                                         if edit_password != datos_originales[4]:
                                             if not validar_password_moodle(edit_password):
                                                 st.error("❌ La nueva contraseña debe tener 8 caracteres, mayúscula, minúscula, número y especial.")
@@ -796,6 +940,10 @@ else:
                 # --- VISTA: EJECUTAR DIAGNÓSTICO ---
                 elif st.session_state['tab_actual'] == "🚀 Ejecutar Diagnóstico":
                     mostrar_modulo_ia()
+
+                # --- VISTA: DASHBOARD INTERACTIVO ---
+                elif st.session_state['tab_actual'] == "📊 Dashboard Interactivo":
+                    mostrar_dashboard_interactivo()
 
         with col2:
             with st.container(border=True):
