@@ -7,3 +7,4 @@ tensorflow
 openpyxl
 matplotlib
 seaborn
+plotly
