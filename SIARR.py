@@ -76,21 +76,21 @@ header {visibility: hidden;}
     font-weight: bold !important;
 }
 
-/* --- ESTILOS EXTRA PARA TARJETAS DEL DASHBOARD --- */
-.card {
+/* --- ESTILOS PARA EL DASHBOARD NUEVO --- */
+.kpi-card {
     background-color: #f8f9fa;
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-top: 5px solid #1f77b4;
     margin-bottom: 20px;
-    border-top: 4px solid #1f77b4;
 }
-.card-title {
-    color: #2c3e50;
-    font-weight: bold;
-    margin-bottom: 15px;
-    text-align: center;
-    font-size: 1.1rem;
+.graph-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 25px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -114,12 +114,6 @@ if 'excel_data' not in st.session_state:
     st.session_state['excel_data'] = None
 if 'df_crudo_entrenamiento' not in st.session_state:
     st.session_state['df_crudo_entrenamiento'] = None 
-
-# Variables nuevas requeridas para el Dashboard
-if 'df_db_prep' not in st.session_state:
-    st.session_state['df_db_prep'] = None
-if 'variables_correlacionadas' not in st.session_state:
-    st.session_state['variables_correlacionadas'] = {}
 
 # Variables para el Dashboard Drill-Down
 if 'dash_nivel' not in st.session_state:
@@ -213,7 +207,7 @@ def init_db():
 
 init_db()
 
-# --- INTERFAZ DE LOGIN (TUYO ORIGINAL) ---
+# --- INTERFAZ DE LOGIN ---
 if st.session_state['usuario_actual'] is None:
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -349,6 +343,7 @@ else:
                         st.error("❌ Error: No se encontró ningún archivo de base de datos histórico en el servidor.")
                         return
 
+                # Guardamos copia original para extraer info rica en el Dashboard
                 st.session_state['df_crudo_entrenamiento'] = df.copy()
 
                 cols_ignorar = ['Matrícula', 'Matricula', 'matricula', 'Nombre', 'Nombre_completo', 'ID', 'Id']
@@ -370,9 +365,6 @@ else:
                 
                 nombres_variables = X_train.columns
                 correlaciones = X_train.corrwith(y_train).fillna(0).values
-                
-                # --- (MÍNIMO CAMBIO) GUARDAR ESTO PARA QUE FUNCIONE EL DASHBOARD NUEVO ---
-                st.session_state['variables_correlacionadas'] = dict(zip(nombres_variables, correlaciones))
                 
                 scaler = StandardScaler()
                 X_train_scaled = scaler.fit_transform(X_train)
@@ -443,9 +435,6 @@ else:
                     df_db_prep['Internet_Casa'] = df_db['internet'].map({'Sí': 1, 'No': 0}).fillna(0)
                     df_db_prep['Calidad_Internet'] = df_db['calidad_internet']
                     
-                    # --- (MÍNIMO CAMBIO) GUARDAR ESTO PARA EL DASHBOARD NUEVO ---
-                    st.session_state['df_db_prep'] = df_db_prep.copy()
-
                     X_custom = df_db_prep.reindex(columns=nombres_variables, fill_value=0)
                     X_custom_scaled = scaler.transform(X_custom)
                     predicciones_custom = model.predict(X_custom_scaled, verbose=0)
@@ -477,6 +466,7 @@ else:
                         else:
                             motivos_str = "Buen rendimiento general"
                             
+                        # Guardamos info valiosa para el Dashboard
                         resultados_custom.append({
                             "Matrícula": fila.get('Matrícula'),
                             "Nombre": fila.get('Nombre_completo'),
@@ -486,10 +476,10 @@ else:
                             "Nivel_Estres": fila.get('Nivel_Estres'),
                             "Promedio_General": fila.get('Promedio_General'),
                             "Asistencia_Clases": fila.get('Asistencia_Clases'),
-                            "Horas_Estudio_Semana": fila.get('Horas_Estudio_Semana'), # Requerido para la grafica Scatter
+                            "Horas_Estudio": fila.get('Horas_Estudio_Semana'),
                             "Resultado IA": estado,
                             "Nivel de Riesgo": nivel,
-                            "Riesgo_Predicho": riesgo_predicho, # Variable limpia para los filtros
+                            "Riesgo_Predicho": riesgo_predicho,
                             "Prob. Exacta (%)": f"{prob_num * 100:.2f}%",
                             "Factores Críticos": motivos_str
                         })
@@ -498,7 +488,7 @@ else:
                     
                     buffer = io.BytesIO()
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        df_resultados.drop(columns=['Riesgo_Predicho', 'Horas_Estudio_Semana']).to_excel(writer, index=False, sheet_name='Diagnóstico')
+                        df_resultados.drop(columns=['Riesgo_Predicho']).to_excel(writer, index=False, sheet_name='Diagnóstico')
                         worksheet = writer.sheets['Diagnóstico']
                         
                         fill_riesgo = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
@@ -510,7 +500,7 @@ else:
                                 cell_val = worksheet.cell(row=r_num, column=idx_col_resultado).value
                                 current_fill = fill_riesgo if cell_val == "⚠️ RIESGO" else fill_estable if cell_val == "✅ ESTABLE" else None
                                 if current_fill:
-                                    for c_num in range(1, len(df_resultados.columns) - 1): # Ajustado por las columnas extra
+                                    for c_num in range(1, len(df_resultados.columns)):
                                         worksheet.cell(row=r_num, column=c_num).fill = current_fill
                         except:
                             pass
@@ -541,155 +531,294 @@ else:
                 use_container_width=True
             )
 
-    # ==========================================
-    # MÓDULO: DASHBOARD INTERACTIVO (NUEVO DISEÑO TARJETAS)
-    # ==========================================
+    # =====================================================================
+    # --- MÓDULO: DASHBOARD INTERACTIVO (DISEÑO Y GRÁFICAS OPTIMIZADAS) ---
+    # =====================================================================
     def mostrar_dashboard_interactivo():
         if not st.session_state.get('analisis_completado') or st.session_state.get('df_resultados') is None:
             st.warning("⚠️ Primero debes ejecutar el diagnóstico de IA en la pestaña '🚀 Ejecutar Diagnóstico' para visualizar el Dashboard.")
             return
 
-        # NIVEL 1: VISTA GENERAL DEL DASHBOARD
+        # Recuperar datos necesarios
+        df_resultados = st.session_state['df_resultados'].copy()
+        
+        # Recuperar el DataFrame crudo cargado en el módulo de IA (para EDA profundo)
+        if 'df_crudo_entrenamiento' in st.session_state and st.session_state['df_crudo_entrenamiento'] is not None:
+            df_exploratorio = st.session_state['df_crudo_entrenamiento'].copy()
+        else:
+            st.error("❌ Los datos históricos exploratorios no están disponibles. Ejecuta el diagnóstico de nuevo.")
+            return
+
+        # Asegurar mapeo correcto de resultados históricos (Aprobado/Reprobado)
+        if 'Resultado' in df_exploratorio.columns:
+            if df_exploratorio['Resultado'].dtype == 'O': # Si es texto
+                df_exploratorio['Resultado_Str'] = df_exploratorio['Resultado']
+                df_exploratorio['Resultado_Bin'] = df_exploratorio['Resultado'].map({'Aprobado': 0, 'Reprobado': 1}).fillna(1)
+            else:
+                df_exploratorio['Resultado_Bin'] = df_exploratorio['Resultado']
+                df_exploratorio['Resultado_Str'] = df_exploratorio['Resultado'].map({0: 'Aprobado', 1: 'Reprobado'})
+
+        # ------------------------------------------
+        # NIVEL 1: VISIÓN ESTRATÉGICA INSTITUCIONAL
+        # ------------------------------------------
         if st.session_state.dash_nivel == 1:
-            st.markdown("<h2 style='text-align: center; color: #2C3E50;'>📊 Panel de Inteligencia Académica Institucional</h2>", unsafe_allow_html=True)
+            st.markdown("<h2 style='text-align: center; color: #2C3E50;'>📊 Visión Estratégica Institucional (Dashboard SIARR)</h2>", unsafe_allow_html=True)
             st.write("---")
 
-            df_resultados = st.session_state['df_resultados'].copy()
-            df_exploratorio = st.session_state['df_db_prep'].copy()
-
-            # --- FILA 1: TARJETAS MÉTRICAS DE RESUMEN ---
-            st.markdown("### 📌 Resumen Ejecutivo")
-            c1, c2, c3, c4 = st.columns(4)
+            # ==========================================
+            # SECCIÓN 1: TARJETAS KPI (Métricas Clave)
+            # ==========================================
+            col1, col2, col3, col4 = st.columns(4)
             
-            total = len(df_resultados)
-            critico = len(df_resultados[df_resultados['Riesgo_Predicho'] == 'Alto'])
-            estable = len(df_resultados[(df_resultados['Riesgo_Predicho'] == 'Bajo') | (df_resultados['Riesgo_Predicho'] == 'Medio')])
-            
-            df_historico = st.session_state.get('df_crudo_entrenamiento')
-            reprobados_reales = len(df_historico[df_historico['Resultado'] == 1]) if df_historico is not None and 'Resultado' in df_historico.columns else 0
+            # Cálculos de KPI
+            total_evaluados = len(df_resultados)
+            passed_real = len(df_exploratorio[df_exploratorio['Resultado_Bin'] == 0]) if total_evaluados > 0 else 0
+            failed_real = len(df_exploratorio[df_exploratorio['Resultado_Bin'] == 1]) if total_evaluados > 0 else 0
+            criticos_riesgo = len(df_resultados[df_resultados['Riesgo_Predicho'] == 'Alto'])
 
-            with c1:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.metric("👥 Total Alumnos Evaluados", total)
-                st.markdown('</div>', unsafe_allow_html=True)
-            with c2:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.metric("🔴 Alumnos Riesgo Alto", critico, f"{(critico/total*100) if total > 0 else 0:.1f}%")
-                st.markdown('</div>', unsafe_allow_html=True)
-            with c3:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.metric("🟢 Alumnos Estables", estable)
-                st.markdown('</div>', unsafe_allow_html=True)
-            with c4:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.metric("🛑 Histórico Reprobados (BD)", reprobados_reales)
-                st.markdown('</div>', unsafe_allow_html=True)
+            with col1:
+                st.markdown(f'<div class="kpi-card"><h3>👥 Total Evaluados</h3><h2>{total_evaluados}</h2><p>Población activa</p></div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown(f'<div class="kpi-card" style="border-top-color: #2ecc71;"><h3>✅ Aprobados (Histórico)</h3><h2>{passed_real}</h2><p>Dataset de entrenamiento</p></div>', unsafe_allow_html=True)
+            with col3:
+                st.markdown(f'<div class="kpi-card" style="border-top-color: #e74c3c;"><h3>🛑 Reprobados (Histórico)</h3><h2>{failed_real}</h2><p>Dataset de entrenamiento</p></div>', unsafe_allow_html=True)
+            with col4:
+                st.markdown(f'<div class="kpi-card" style="border-top-color: #f39c12;"><h3>🚨 Riesgo Alto (Actual)</h3><h2>{criticos_riesgo}</h2><p>Predicción IA activa</p></div>', unsafe_allow_html=True)
 
-            # --- FILA 2: VARIABLES QUE INFLUYEN Y GRÁFICAS DE LOS NOTEBOOKS ---
             st.write("<br>", unsafe_allow_html=True)
-            col_variables, col_pie_semestres = st.columns([1.5, 1])
 
-            with col_variables:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown('<div class="card-title">🚨 Factores Críticos de Riesgo (Feature Importance)</div>', unsafe_allow_html=True)
-                
-                if 'variables_correlacionadas' in st.session_state and st.session_state['variables_correlacionadas']:
-                    var_corr = st.session_state['variables_correlacionadas']
-                    df_importancia = pd.DataFrame(list(var_corr.items()), columns=['Variable', 'Correlación'])
-                    df_importancia['Variable'] = df_importancia['Variable'].str.replace('_', ' ')
-                    df_importancia['Abs_Correlación'] = df_importancia['Correlación'].abs()
-                    df_importancia = df_importancia.sort_values(by='Abs_Correlación', ascending=False).head(10)
+            # ==========================================
+            # SECCIÓN 2: GRÁFICAS DEL ARCHIVO DE ENTRENAMIENTO (Feature Importance)
+            # ==========================================
+            st.markdown("### 🧬 Análisis de Causalidad Profunda (Notebook EntrenamientoFinal.ipynb)")
+            
+            st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+            
+            # GRÁFICA SOLICITADA 1: Variables que más influyen ARRIBA PRIMERO
+            st.write("#### 🚨 Variables Predictoras Críticas (Most Influential Variables)")
+            
+            target_col = 'Resultado_Bin'
+            df_corr = df_exploratorio.select_dtypes(include=[np.number])
+            if target_col in df_corr.columns:
+                correlations = df_corr.corr()[target_col].abs().sort_values(ascending=False).drop(target_col)
+                clean_names = [name.replace('_', ' ') for name in correlations.index]
+                df_imp = pd.DataFrame({'Variable': clean_names, 'Importancia Relativa': correlations.values})
+                df_imp_top = df_imp.head(10)
 
-                    fig_variables = px.bar(
-                        df_importancia, y='Variable', x='Correlación', orientation='h',
-                        color='Correlación', color_continuous_scale='RdBu', text_auto='.2f',
-                        labels={'Correlación': 'Impacto (+ Aprobación, - Reprobación)'}
-                    )
-                    fig_variables.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=20, r=20, t=20, b=20), height=380)
-                    fig_variables.update_yaxes(autorange="reversed")
-                    st.plotly_chart(fig_variables, use_container_width=True)
-                else:
-                    st.info("💡 Realiza el diagnóstico para visualizar el peso de las variables académicas.")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            with col_pie_semestres:
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown('<div class="card-title">✅ Estatus Actual Predicho (Aprobados vs Riesgo)</div>', unsafe_allow_html=True)
-                
-                fig_riesgo_pie = px.pie(
-                    df_resultados, names='Resultado IA', hole=0.45, color='Resultado IA',
-                    color_discrete_map={'⚠️ RIESGO': '#e74c3c', '✅ ESTABLE': '#2ecc71'}
+                fig_variables = px.bar(
+                    df_imp_top,
+                    x='Importancia Relativa',
+                    y='Variable',
+                    orientation='h',
+                    color='Importancia Relativa',
+                    color_continuous_scale='Reds',
+                    labels={'Variable': 'Variables Académicas/Socioeconómicas'}
                 )
-                fig_riesgo_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=2)))
-                fig_riesgo_pie.update_layout(showlegend=False, margin=dict(l=20, r=20, t=10, b=10), height=180)
-                st.plotly_chart(fig_riesgo_pie, use_container_width=True)
+                fig_variables.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=20, r=20, t=30, b=20), height=400)
+                st.plotly_chart(fig_variables, use_container_width=True)
+                st.info("💡 **Guía de Diseño:** Esta gráfica muestra las 10 variables que presentan mayor correlación histórica con la reprobación. Una 'Importancia Relativa' alta indica que cambios en esa variable están fuertemente asociados con el estatus del alumno.")
+            else:
+                st.error("⚠️ La columna objetivo histórica no está definida correctamente en los datos de entrenamiento.")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # ==========================================
+            # SECCIÓN 3: GRÁFICAS EDA (Notebook Graficas.ipynb)
+            # ==========================================
+            st.markdown("### 📊 Análisis Exploratorio de Datos (Notebook Graficas.ipynb)")
+            st.write("<br>", unsafe_allow_html=True)
+
+            # --- FILA EDA 1: Aprobados/Reprobados (Histórico) y Semestres ---
+            col_ed1_left, col_ed1_right = st.columns(2)
+
+            with col_ed1_left:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                # GRÁFICA SOLICITADA 2: Reprobados y Aprobados (Histórico)
+                st.write("#### ✅ Distribución Histórica: Aprobados vs Reprobados")
+                if 'Resultado_Str' in df_exploratorio.columns:
+                    fig_passed_failed = px.histogram(
+                        df_exploratorio,
+                        x="Resultado_Str",
+                        color="Resultado_Str",
+                        color_discrete_map={'Aprobado': '#2ecc71', 'Reprobado': '#e74c3c'},
+                        labels={'Resultado_Str': 'Estatus del Alumno'},
+                        text_auto=True
+                    )
+                    fig_passed_failed.update_layout(yaxis_title="Cantidad de Alumnos", margin=dict(l=20, r=20, t=30, b=20), height=350, showlegend=False)
+                    st.plotly_chart(fig_passed_failed, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                st.markdown('<div class="card-title">📅 Distribución de la Población por Semestre</div>', unsafe_allow_html=True)
-                
+            with col_ed1_right:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                # GRÁFICA SOLICITADA 3: Los Semestres
+                st.write("#### 📅 Distribución de Población por Semestre")
                 if 'Semestre' in df_exploratorio.columns:
-                    fig_semestres = px.histogram(df_exploratorio, x='Semestre', color_discrete_sequence=['#34495E'], text_auto=True)
-                    fig_semestres.update_layout(xaxis_title="Semestre Académico", yaxis_title="Cantidad de Alumnos", margin=dict(l=20, r=20, t=10, b=10), height=150)
+                    fig_semestres = px.histogram(
+                        df_exploratorio,
+                        x="Semestre",
+                        color_discrete_sequence=['#34495E'],
+                        labels={'Semestre': 'Semestre Académico'},
+                        text_auto=True
+                    )
+                    fig_semestres.update_layout(yaxis_title="Cantidad de Alumnos", margin=dict(l=20, r=20, t=30, b=20), height=350)
                     st.plotly_chart(fig_semestres, use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            # --- FILA 3: SECCIÓN DE DRILL-DOWN ---
-            st.write("---")
-            st.markdown("### 🔍 Explorar Población Específica (Drill-Down):")
-            c1, c2, c3 = st.columns(3)
-            if c1.button("🚨 Ver Críticos (Riesgo Alto)", use_container_width=True):
-                st.session_state.dash_estado_acad = 'Alto'
-                st.session_state.dash_nivel = 2
-                st.rerun()
-            if c2.button("⚠️ Ver Riesgo Medio", use_container_width=True):
-                st.session_state.dash_estado_acad = 'Medio'
-                st.session_state.dash_nivel = 2
-                st.rerun()
-            if c3.button("✅ Ver Buen Rendimiento", use_container_width=True):
-                st.session_state.dash_estado_acad = 'Bajo'
-                st.session_state.dash_nivel = 2
-                st.rerun()
+            # --- FILA EDA 2: Incorporando Gráficas Específicas del Notebook ---
+            col_ed2_left, col_ed2_right = st.columns(2)
 
-        # NIVEL 2: DRILL DOWN (Muestra la tabla filtrada y la Gráfica Scatter Plot)
+            with col_ed2_left:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                # EDA GRAFICA 1 del Notebook: Calificación Final vs Sexo (Boxplot)
+                st.write("#### 📉 Rendimiento Final por Género")
+                if all(col in df_exploratorio.columns for col in ['Sexo', 'Calificación_Final']):
+                    fig_sex_score = px.box(
+                        df_exploratorio,
+                        x="Sexo",
+                        y="Calificación_Final",
+                        color="Sexo",
+                        color_discrete_map={'Hombre': '#3498db', 'Mujer': '#e74c3c'},
+                        labels={'Calificación_Final': 'Calificación Final de Programación'}
+                    )
+                    fig_sex_score.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=350, showlegend=False)
+                    st.plotly_chart(fig_sex_score, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            with col_ed2_right:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                # EDA GRAFICA 3 del Notebook: Asistencia vs Sexo (Boxplot)
+                st.write("#### ⏱️ Nivel de Asistencia por Género")
+                if all(col in df_exploratorio.columns for col in ['Sexo', 'Asistencia']):
+                    fig_sex_attend = px.box(
+                        df_exploratorio,
+                        x="Sexo",
+                        y="Asistencia",
+                        color="Sexo",
+                        color_discrete_map={'Hombre': '#3498db', 'Mujer': '#e74c3c'},
+                        labels={'Asistencia': 'Nivel de Asistencia (1-5)'}
+                    )
+                    fig_sex_attend.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=350, showlegend=False)
+                    st.plotly_chart(fig_sex_attend, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            # --- FILA EDA 3: Recursos Tecnológicos del Notebook ---
+            col_ed3_left, col_ed3_right = st.columns(2)
+            
+            with col_ed3_left:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                # EDA GRAFICA 4 del Notebook: Calidad Internet Counts (Countplot)
+                st.write("#### 🌐 Calidad de Internet en Casa (Distribución)")
+                if 'Calidad_Internet' in df_exploratorio.columns:
+                    fig_internet = px.histogram(
+                        df_exploratorio,
+                        x="Calidad_Internet",
+                        color_discrete_sequence=['#16a085'],
+                        labels={'Calidad_Internet': 'Escala de Calidad (1=Mala, 5=Excelente)'},
+                        text_auto=True
+                    )
+                    fig_internet.update_layout(yaxis_title="Cantidad Alumnos", margin=dict(l=20, r=20, t=30, b=20), height=350)
+                    fig_internet.update_xaxes(categoryorder='category ascending')
+                    st.plotly_chart(fig_internet, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            with col_ed3_right:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                # EDA GRAFICA 5 del Notebook: Horas Estudio vs Sexo (Boxplot)
+                st.write("#### 📖 Horas de Estudio Semanal por Género")
+                if all(col in df_exploratorio.columns for col in ['Sexo', 'Horas_Estudio']):
+                    fig_sex_study = px.box(
+                        df_exploratorio,
+                        x="Sexo",
+                        y="Horas_Estudio",
+                        color="Sexo",
+                        color_discrete_map={'Hombre': '#3498db', 'Mujer': '#e74c3c'},
+                        labels={'Horas_Estudio': 'Horas de Estudio'}
+                    )
+                    fig_sex_study.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=350, showlegend=False)
+                    st.plotly_chart(fig_sex_study, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            st.write("<br>", unsafe_allow_html=True)
+            st.write("---")
+            
+            # ==========================================
+            # SECCIÓN 4: EXPLORACIÓN ESPECÍFICA (Drill-Down Original)
+            # ==========================================
+            st.markdown("### 🔍 Explorar Población Actual Específica (Drill-Down):")
+            
+            # Re-calculando distribución de riesgo predicho para la gráfica original
+            condiciones = [
+                df_resultados['Prob. Exacta (%)'].astype(float) >= 70.0,
+                (df_resultados['Prob. Exacta (%)'].astype(float) >= 40.0) & (df_resultados['Prob. Exacta (%)'].astype(float) < 70.0),
+                df_resultados['Prob. Exacta (%)'].astype(float) < 40.0
+            ]
+            opciones = ['🔴 Estado Crítico', '🟡 Riesgo Moderado', '🟢 Buen Rendimiento']
+            df_resultados['Estado_Dashboard'] = np.select(condiciones, opciones, default='🟢 Buen Rendimiento')
+
+            col_orig1, col_orig2 = st.columns([1, 1.2])
+
+            with col_orig1:
+                st.markdown('<div class="graph-container">', unsafe_allow_html=True)
+                st.markdown("#### Distribución de Estatus Académico (Actual Predicho)")
+                fig_donut = px.pie(
+                    df_resultados, names='Estado_Dashboard', hole=0.45,
+                    color='Estado_Dashboard',
+                    color_discrete_map={
+                        '🔴 Estado Crítico': '#e74c3c', 
+                        '🟡 Riesgo Moderado': '#f39c12', 
+                        '🟢 Buen Rendimiento': '#2ecc71'
+                    }
+                )
+                fig_donut.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=2)))
+                fig_donut.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
+                st.plotly_chart(fig_donut, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            with col_orig2:
+                st.write("<br>", unsafe_allow_html=True)
+                st.markdown("#### Selección para Análisis Profundo:")
+                
+                c1, c2, c3 = st.columns(3)
+                if c1.button("🔴 Ver Críticos", use_container_width=True):
+                    st.session_state.dash_estado_acad = '🔴 Estado Crítico'
+                    st.session_state.dash_nivel = 2
+                    st.rerun()
+                if c2.button("⚠️ Ver Riesgo Moderado", use_container_width=True):
+                    st.session_state.dash_estado_acad = '🟡 Riesgo Moderado'
+                    st.session_state.dash_nivel = 2
+                    st.rerun()
+                if c3.button("✅ Ver Estables", use_container_width=True):
+                    st.session_state.dash_estado_acad = '🟢 Buen Rendimiento'
+                    st.session_state.dash_nivel = 2
+                    st.rerun()
+
+        # ------------------------------------------
+        # NIVEL 2: VISTA DETALLADA (DRILL-DOWN)
+        # ------------------------------------------
         elif st.session_state.dash_nivel == 2:
-            st.markdown(f"<h2 style='text-align: center; color: #2C3E50;'>🔍 Segmentación Detallada: Riesgo {st.session_state.dash_estado_acad}</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='text-align: center; color: #2C3E50;'>🔍 Segmentación Detallada: {st.session_state.dash_estado_acad}</h2>", unsafe_allow_html=True)
             st.write("---")
             
             if st.button("⬅️ Volver al Panel Estratégico", type="secondary"):
                 st.session_state.dash_nivel = 1
                 st.session_state.dash_estado_acad = None
+                st.session_state.dash_semestre = None
                 st.rerun()
                 
-            df_filtrado = st.session_state['df_resultados'][st.session_state['df_resultados']['Riesgo_Predicho'] == st.session_state.dash_estado_acad]
+            df_filtrado = df_resultados[df_resultados['Estado_Dashboard'] == st.session_state.dash_estado_acad]
             
             if df_filtrado.empty:
-                st.info("No se encontraron alumnos en este segmento específico en este momento.")
+                st.info("No se encontraron alumnos en este segmento bajo los filtros actuales.")
             else:
-                st.markdown(f"**Alumnos identificados en este grupo:** {len(df_filtrado)}")
+                st.markdown(f"**Alumnos encontrados en este grupo:** {len(df_filtrado)}")
                 
-                # Gráfica 7: Scatter Plot de Rendimiento
-                st.markdown("### 🎯 Gráfica 7: Análisis de Dispersión - Estudio vs. Rendimiento")
-                
-                if all(col in df_filtrado.columns for col in ['Horas_Estudio_Semana', 'Promedio_General', 'Nivel_Estres', 'Riesgo_Predicho']):
-                    fig7 = px.scatter(
-                        df_filtrado,
-                        x='Horas_Estudio_Semana',
-                        y='Promedio_General',
-                        color='Riesgo_Predicho',
-                        size='Nivel_Estres',
-                        hover_data=['Nombre'],
-                        title="Relación entre Horas de Estudio y Promedio (El tamaño del punto representa el Estrés)",
-                        color_discrete_map={'Alto': '#e74c3c', 'Medio': '#f39c12', 'Bajo': '#2ecc71'}
-                    )
-                    fig7.update_layout(template="plotly_white", margin=dict(l=20, r=20, t=50, b=20))
-                    st.plotly_chart(fig7, use_container_width=True)
-                
-                # Tabla
+                # Tabla interactiva filtrada
                 cols_mostrar = ['Matrícula', 'Nombre', 'Semestre', 'Promedio_General', 'Asistencia_Clases', 'Prob. Exacta (%)', 'Factores Críticos']
                 st.dataframe(df_filtrado[cols_mostrar], use_container_width=True)
 
-    # --- BARRA LATERAL: NAVEGACIÓN BASADA EN ROLES ---
+    # ==========================================
+    # --- MENÚ LATERAL Y RUTEO ---
+    # ==========================================
     st.sidebar.title("🧭 Menú de Navegación")
     rol = st.session_state['rol_actual']
     
