@@ -509,152 +509,196 @@ else:
                 file_name=f"Reporte_IA_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
-            )
 
-      # ==========================================
-    # MÓDULO: DASHBOARD INTERACTIVO INNOVADOR
-    # ==========================================
-    def mostrar_dashboard_interactivo():
-        import streamlit as st
+                def mostrar_dashboard_interactivo():
+        import pandas as pd
         import matplotlib.pyplot as plt
         import seaborn as sns
-        import textwrap
         import plotly.express as px
-    
-        if not st.session_state.get('analisis_completado') or st.session_state.get('df_resultados') is None:
-            st.warning(" ⚠️  Primero debes ejecutar el diagnóstico de IA en la pestaña ' 🚀  Ejecutar Diagnóstico' para visualizar el Dashboard.")
+        import plotly.graph_objects as go
+        import numpy as np
+
+        st.title("📊 Dashboard de Análisis Exploratorio Avanzado")
+        st.markdown("Historial de datos de entrenamiento y correlaciones para la predicción de rendimiento académico.")
+
+        # 1. Carga adaptativa del dataset (Basado en Graficas.ipynb y Entrenamiento.ipynb)
+        try:
+            df = pd.read_excel("dataset_final_sin_duplicados.xlsx")
+        except Exception:
+            try:
+                df = pd.read_csv("dataset_final_sin_duplicados.xlsx - Sheet1.csv")
+            except Exception as e:
+                st.error(f"❌ No se pudo cargar el dataset. Asegúrate de que el archivo 'dataset_final_sin_duplicados.xlsx' esté en la misma carpeta que este script.")
+                st.info(f"Detalle del error: {e}")
+                return
+
+        # 2. Homologación y limpieza de la variable objetivo (Resultado)
+        if 'Resultado' in df.columns:
+            if pd.api.types.is_numeric_dtype(df['Resultado']):
+                df['Resultado_Cat'] = df['Resultado'].map({1: 'Aprobado', 0: 'Reprobado'})
+            else:
+                df['Resultado_Cat'] = df['Resultado'].map({'Aprobado': 'Aprobado', 'Reprobado': 'Reprobado'})
+            df['Resultado_Cat'] = df['Resultado_Cat'].fillna('No Definido')
+        else:
+            st.error("⚠️ La columna objetivo 'Resultado' no fue encontrada en el archivo de datos.")
             return
-    
-        df = st.session_state['df_resultados'].copy()
-        df_crudo = st.session_state.get('df_crudo_entrenamiento')
-        
-        if df_crudo is None:
-            df_crudo = df.copy()
-    
-        st.markdown("##  📊  Dashboard Completo de Análisis y Resultados IA")
-        st.write("Explora de forma visual e interactiva el comportamiento de TODA la población estudiantil analizada.")
-        st.write("---")
-    
-        # Asegurar nombres limpios en la variable objetivo para gráficos
-        if 'Resultado' not in df_crudo.columns and 'Resultado IA' in df.columns:
-            df_crudo['Resultado'] = df['Resultado IA'].map({' ✅  ESTABLE': 'Aprobado', ' ⚠️  RIESGO': 'Reprobado'})
-        elif 'Resultado' in df_crudo.columns:
-            df_crudo['Resultado'] = df_crudo['Resultado'].map({0: 'Aprobado', 1: 'Reprobado', 'Aprobado': 'Aprobado', 'Reprobado': 'Reprobado'})
-    
-        # Estética global del proyecto de gráficas (Basado en tu archivo Graficas.ipynb)
+
+        # 3. Configuración estética global (Respetando tus libretas .ipynb)
         sns.set_theme(style="whitegrid", rc={"grid.linestyle": "--", "grid.alpha": 0.5})
         plt.rcParams['font.family'] = 'sans-serif'
-        colores = {"Aprobado": "#2ecc71", "Reprobado": "#ff5722"}
-    
-        # ==========================
-        # 1. MATRIZ DE CORRELACIÓN (De EntrenamientoFinal.ipynb)
-        # ==========================
-        st.markdown("###  🧠  Matriz de Correlación de Variables")
-        st.write("Identifica cómo se relacionan los factores académicos y personales entre sí.")
-        cols_numericas = df_crudo.select_dtypes(include=['float64', 'int64']).columns
-        if len(cols_numericas) > 1:
-            fig_corr, ax_corr = plt.subplots(figsize=(14, 10))
-            corr = df_crudo[cols_numericas].corr()
-            sns.heatmap(corr, annot=False, cmap='coolwarm', ax=ax_corr, linewidths=0.5)
-            ax_corr.set_title("Relación entre factores académicos y personales", fontsize=15, fontweight='bold', pad=15, color='#1d3557')
-            st.pyplot(fig_corr)
-        else:
-            st.info("No hay suficientes variables numéricas para generar la Matriz de Correlación.")
-        
-        st.write("---")
-        st.markdown("###  📈  Gráficas Principales de Análisis Exploratorio")
-    
-        col_graf1, col_graf2 = st.columns(2)
-    
-        # ==========================
-        # 2. GRÁFICAS DESTACADAS
-        # ==========================
-        with col_graf1:
-            # Gráfica: Computadora Propia (Figura 16 de tu código)
-            if 'Computadora_Propia' in df_crudo.columns:
-                st.markdown("#### Disponibilidad de Computadora Propia")
-                fig1, ax1 = plt.subplots(figsize=(7, 5))
-                sns.histplot(data=df_crudo, x="Computadora_Propia", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="layer", kde=True, alpha=0.6, edgecolor="white", ax=ax1)
-                ax1.set_xlabel("Disponibilidad (0=No, 1=Sí)", fontsize=11, fontweight='bold', color='#393e46')
-                ax1.set_ylabel("Frecuencia (Estudiantes)", fontsize=11, fontweight='bold', color='#393e46')
-                if ax1.get_legend(): ax1.get_legend().set_title("Estatus del Alumno")
-                sns.despine(left=True, bottom=True)
-                st.pyplot(fig1)
-    
-            # Gráfica: Motivación Programación
-            if 'Motivacion_Programacion' in df_crudo.columns:
-                st.markdown("#### Motivación hacia la Programación")
-                fig2, ax2 = plt.subplots(figsize=(7, 5))
-                sns.histplot(data=df_crudo, x="Motivacion_Programacion", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, ax=ax2)
-                ax2.set_xlabel("Nivel de Motivación", fontsize=11, fontweight='bold')
-                ax2.set_ylabel("Frecuencia", fontsize=11, fontweight='bold')
-                st.pyplot(fig2)
-    
-        with col_graf2:
-            # Gráfica: Horas de Estudio
-            if 'Horas_Estudio_Semana' in df_crudo.columns:
-                st.markdown("#### Impacto de las Horas de Estudio")
-                fig3, ax3 = plt.subplots(figsize=(7, 5))
-                sns.boxplot(data=df_crudo, x="Resultado", y="Horas_Estudio_Semana", palette=colores, ax=ax3)
-                ax3.set_xlabel("Estatus del Alumno", fontsize=11, fontweight='bold')
-                ax3.set_ylabel("Horas de Estudio por Semana", fontsize=11, fontweight='bold')
-                st.pyplot(fig3)
-    
-            # Gráfica: Dificultad Percibida
-            if 'Dificultad_Materia' in df_crudo.columns:
-                st.markdown("#### Dificultad Percibida de la Materia")
-                fig4, ax4 = plt.subplots(figsize=(7, 5))
-                sns.histplot(data=df_crudo, x="Dificultad_Materia", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, ax=ax4)
-                ax4.set_xlabel("Nivel de Dificultad", fontsize=11, fontweight='bold')
-                ax4.set_ylabel("Frecuencia", fontsize=11, fontweight='bold')
-                st.pyplot(fig4)
-    
-        st.write("---")
-        
-        # ==========================
-        # 3. TODAS LAS DEMÁS GRÁFICAS (Generación Dinámica)
-        # ==========================
-        st.markdown("### 🔍 Exploración de Todas las Variables del Estudio")
-        st.write("Selecciona cualquier variable del dataset para visualizar su distribución y cómo impacta en la aprobación o reprobación del alumno.")
-        
-        # Excluir columnas que no son útiles para graficar como histogramas
-        columnas_excluidas = ['Marca_temporal', 'Dirección_de_correo_electrónico', 'Correo', 'Nombre_completo', 'Matrícula', 'Resultado', 'Resultado IA']
-        columnas_graficables = [col for col in df_crudo.columns if col not in columnas_excluidas]
-        
-        variable_seleccionada = st.selectbox("Elige la variable que deseas graficar:", columnas_graficables)
-        
-        if variable_seleccionada:
-            col_dinamica1, col_dinamica2 = st.columns([2, 1])
-            
-            with col_dinamica1:
-                fig_din, ax_din = plt.subplots(figsize=(9, 6))
-                
-                # Verificar si la variable tiene muchos valores únicos (para usar KDE) o pocos (para barras separadas)
-                if df_crudo[variable_seleccionada].nunique() > 10:
-                    sns.histplot(data=df_crudo, x=variable_seleccionada, hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="layer", kde=True, alpha=0.6, edgecolor="white", ax=ax_din)
-                else:
-                    sns.histplot(data=df_crudo, x=variable_seleccionada, hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, edgecolor="white", ax=ax_din)
-                    
-                ax_din.set_xlabel(variable_seleccionada.replace("_", " "), fontsize=12, fontweight='bold', color='#393e46', labelpad=10)
-                ax_din.set_ylabel("Frecuencia (Estudiantes)", fontsize=12, fontweight='bold', color='#393e46', labelpad=10)
-                if ax_din.get_legend(): ax_din.get_legend().set_title("Estatus")
-                sns.despine(left=True, bottom=True)
-                
-                st.pyplot(fig_din)
-                
-            with col_dinamica2:
-                st.info(f"**Análisis de: {variable_seleccionada.replace('_', ' ')}**")
-                st.write(f"Esta gráfica representa la distribución de la variable **{variable_seleccionada}** extraída de tu archivo de gráficas.")
-                st.write("Las barras **verdes** corresponden a los estudiantes 'Aprobados' y las **corales** identifican a los 'Reprobados'.")
-                
-                # Gráfica de caja (Boxplot) complementaria para ver promedios
-                if df_crudo[variable_seleccionada].dtype in ['float64', 'int64']:
-                    fig_box, ax_box = plt.subplots(figsize=(4, 3))
-                    sns.boxplot(data=df_crudo, x="Resultado", y=variable_seleccionada, palette=colores, ax=ax_box)
-                    ax_box.set_xlabel("")
-                    ax_box.set_ylabel(variable_seleccionada.replace("_", " "), fontsize=9)
-                    st.pyplot(fig_box)
+        colores_proyecto = {"Aprobado": "#2ecc71", "Reprobado": "#ff5722", "No Definido": "#7f8c8d"}
 
+        # 4. Métricas rápidas en la parte superior
+        total_alumnos = len(df)
+        aprobados = len(df[df['Resultado_Cat'] == 'Aprobado'])
+        reprobados = len(df[df['Resultado_Cat'] == 'Reprobado'])
+        tasa_aprobacion = (aprobados / total_alumnos) * 100 if total_alumnos > 0 else 0
+
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric("Total Alumnos", f"{total_alumnos} 👥")
+        with m2:
+            st.metric("Aprobados", f"{aprobados} ✅", delta=f"{tasa_aprobacion:.1f}% del total")
+        with m3:
+            st.metric("Reprobados", f"{reprobados} ❌", delta=f"{(reprobados/total_alumnos)*100:.1f}%", delta_color="inverse")
+        with m4:
+            st.metric("Tasa de Éxito", f"{tasa_aprobacion:.1f}% 📈")
+
+        st.write("")
+
+        # 5. Distribución en Pestañas (Tabs) para limpieza visual
+        tab1, tab2, tab3 = st.tabs(["📈 Distribución de Variables", "📦 Análisis Estadístico (Boxplots)", "🔗 Matriz de Correlación"])
+
+        cols_excluir = ['Resultado', 'Resultado_Cat', 'ID', 'id', 'Id', 'Alumno', 'Nombre']
+        variables_analizables = [col for col in df.columns if col not in cols_excluir]
+
+        # --- PESTAÑA 1: DISTRIBUCIÓN ---
+        with tab1:
+            st.subheader("Análisis de Distribución Frecuencial")
+            st.markdown("Selecciona cualquier variable del dataset para observar cómo se distribuye entre alumnos Aprobados y Reprobados.")
+            
+            variable_seleccionada = st.selectbox(
+                "Selecciona la variable a graficar:", 
+                options=variables_analizables, 
+                key="sb_distribucion"
+            )
+
+            if variable_seleccionada:
+                fig, ax = plt.subplots(figsize=(10, 5))
+                
+                if df[variable_seleccionada].nunique() <= 12:
+                    sns.countplot(
+                        data=df, 
+                        x=variable_seleccionada, 
+                        hue='Resultado_Cat', 
+                        palette=colores_proyecto, 
+                        ax=ax
+                    )
+                    plt.title(f"Conteo de {variable_seleccionada} por Estado Académico", fontsize=12, pad=10)
+                    plt.ylabel("Cantidad de Alumnos")
+                else:
+                    sns.histplot(
+                        data=df, 
+                        x=variable_seleccionada, 
+                        hue='Resultado_Cat', 
+                        multiple="stack", 
+                        palette=colores_proyecto, 
+                        ax=ax, 
+                        kde=True
+                    )
+                    plt.title(f"Histograma de {variable_seleccionada} por Estado Académico", fontsize=12, pad=10)
+                    plt.ylabel("Densidad / Frecuencia")
+
+                plt.xlabel(variable_seleccionada)
+                plt.xticks(rotation=30, ha='right')
+                plt.tight_layout()
+                st.pyplot(fig)
+                plt.close(fig)
+
+            st.markdown("---")
+            st.subheader("Proporción General del Dataset")
+            
+            fig_pie = px.pie(
+                df, 
+                names='Resultado_Cat', 
+                color='Resultado_Cat',
+                color_discrete_map=colores_proyecto, 
+                hole=0.4,
+                title="Distribución Porcentual Total de Alumnos"
+            )
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+            fig_pie.update_layout(margin=dict(t=40, b=20, l=20, r=20))
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+        # --- PESTAÑA 2: BOXPLOTS ---
+        with tab2:
+            st.subheader("Análisis de Dispersión y Outliers (Diagramas de Caja)")
+            st.markdown("Ideal para evaluar rangos, medianas y variabilidad de variables numéricas respecto al resultado final.")
+            
+            variables_numericas = df[variables_analizables].select_dtypes(include=[np.number]).columns.tolist()
+
+            if variables_numericas:
+                var_boxplot = st.selectbox(
+                    "Selecciona una variable numérica:", 
+                    options=variables_numericas, 
+                    key="sb_boxplot"
+                )
+
+                if var_boxplot:
+                    fig_box = px.box(
+                        df, 
+                        x="Resultado_Cat", 
+                        y=var_boxplot, 
+                        color="Resultado_Cat",
+                        color_discrete_map=colores_proyecto, 
+                        points="all",
+                        title=f"Dispersión Estadística de: {var_boxplot}"
+                    )
+                    fig_box.update_layout(
+                        xaxis_title="Resultado del Alumno", 
+                        yaxis_title=var_boxplot,
+                        margin=dict(t=50, b=30, l=30, r=30)
+                    )
+                    st.plotly_chart(fig_box, use_container_width=True)
+            else:
+                st.info("ℹ️ No se detectaron suficientes columnas numéricas continuas en el dataset para estructurar gráficos de caja.")
+
+        # --- PESTAÑA 3: MATRIZ DE CORRELACIÓN ---
+        with tab3:
+            st.subheader("Matriz de Correlación de Pearson")
+            st.markdown("Visualiza el nivel de dependencia lineal entre los factores del dataset de entrenamiento.")
+
+            df_num = df.select_dtypes(include=[np.number])
+            df_num = df_num.drop(columns=[c for c in ['ID', 'id', 'Id'] if c in df_num.columns], errors='ignore')
+
+            if not df_num.empty and len(df_num.columns) > 1:
+                corr_matrix = df_num.corr()
+                fig_corr, ax_corr = plt.subplots(figsize=(11, 9))
+                
+                sns.heatmap(
+                    corr_matrix, 
+                    annot=True, 
+                    fmt=".2f", 
+                    cmap="coolwarm", 
+                    ax=ax_corr, 
+                    cbar=True, 
+                    square=True, 
+                    linewidths=0.5, 
+                    annot_kws={"size": 8}
+                )
+                
+                plt.title("Mapa de Calor de Correlaciones (Dataset de Entrenamiento)", fontsize=13, pad=15)
+                plt.xticks(rotation=45, ha='right', fontsize=9)
+                plt.yticks(rotation=0, fontsize=9)
+                plt.tight_layout()
+                
+                st.pyplot(fig_corr)
+                plt.close(fig_corr)
+            else:
+                st.warning("⚠️ No hay suficientes variables numéricas en el dataset para procesar coeficientes de correlación.")
+            )
+
+     
     # --- PANTALLA: ALUMNO ---
     def pantalla_alumno():
         col1, col2 = st.columns([2.2, 0.8])
@@ -676,9 +720,7 @@ else:
                     confianza = st.selectbox("Confianza en Aprobar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     dificultad = st.selectbox("Dificultad (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     apoyo = st.selectbox("Apoyo Familiar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
-                    estres = st.selectbox("Estrés (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
-                    
-                    computadora = st.radio("¿Computadora Propia?", ["Sí", "No"], index=None)
+                    estres = st.selectdio("¿Computadora Propia?", ["Sí", "No"], index=None)
                     internet = st.radio("¿Internet en Casa?", ["Sí", "No"], index=None)
                     calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     
