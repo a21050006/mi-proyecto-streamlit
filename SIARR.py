@@ -21,7 +21,7 @@ from openpyxl.styles import PatternFill
 import plotly.express as px
 import plotly.graph_objects as go
 
-# --- FUNCIONES DE SEGURIDAD (MD5 y Moodle) ---
+# --- FUNCIONES DE SEGURIDAD (MD5 ) ---
 def generar_md5(texto):
     return hashlib.md5(texto.encode('utf-8')).hexdigest()
 
@@ -514,7 +514,6 @@ else:
 
     def mostrar_dashboard_interactivo():
         st.title("Dashboard de Analisis Exploratorio Avanzado")
-        st.markdown("Graficas integradas desde Graficas.ipynb y EntrenamientoFinal.ipynb, generadas de forma interactiva con Plotly.")
 
         colores_proyecto = {
             "Aprobado": "#2ecc71",
