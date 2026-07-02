@@ -510,8 +510,8 @@ else:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
             )
-
-                def mostrar_dashboard_interactivo():
+            
+            def mostrar_dashboard_interactivo():
         import pandas as pd
         import matplotlib.pyplot as plt
         import seaborn as sns
