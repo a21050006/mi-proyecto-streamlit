@@ -511,195 +511,347 @@ else:
                 use_container_width=True
             )
             
-            def mostrar_dashboard_interactivo():
-        import pandas as pd
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        import plotly.express as px
-        import plotly.graph_objects as go
-        import numpy as np
 
-        st.title("📊 Dashboard de Análisis Exploratorio Avanzado")
-        st.markdown("Historial de datos de entrenamiento y correlaciones para la predicción de rendimiento académico.")
+    def mostrar_dashboard_interactivo():
+        st.title("Dashboard de Analisis Exploratorio Avanzado")
+        st.markdown("Graficas integradas desde Graficas.ipynb y EntrenamientoFinal.ipynb, generadas de forma interactiva con Plotly.")
 
-        # 1. Carga adaptativa del dataset (Basado en Graficas.ipynb y Entrenamiento.ipynb)
-        try:
-            df = pd.read_excel("dataset_final_sin_duplicados.xlsx")
-        except Exception:
-            try:
-                df = pd.read_csv("dataset_final_sin_duplicados.xlsx - Sheet1.csv")
-            except Exception as e:
-                st.error(f"❌ No se pudo cargar el dataset. Asegúrate de que el archivo 'dataset_final_sin_duplicados.xlsx' esté en la misma carpeta que este script.")
-                st.info(f"Detalle del error: {e}")
-                return
+        colores_proyecto = {
+            "Aprobado": "#2ecc71",
+            "Reprobado": "#ff5722",
+            "No Definido": "#7f8c8d"
+        }
+        orden_resultado = ["Aprobado", "Reprobado", "No Definido"]
 
-        # 2. Homologación y limpieza de la variable objetivo (Resultado)
-        if 'Resultado' in df.columns:
-            if pd.api.types.is_numeric_dtype(df['Resultado']):
-                df['Resultado_Cat'] = df['Resultado'].map({1: 'Aprobado', 0: 'Reprobado'})
+        @st.cache_data(show_spinner=False)
+        def cargar_dataset_dashboard():
+            rutas = [
+                "dataset_compartido_admin.xlsx",
+                "dataset_compartido_admin.csv",
+                "dataset_final_sin_duplicados.xlsx",
+                "dataset_final_sin_duplicados.xlsx - Sheet1.csv",
+                "dataset_completo_machine_learning.xlsx",
+                "dataset_maestro.csv"
+            ]
+            for ruta in rutas:
+                if os.path.exists(ruta):
+                    if ruta.lower().endswith(".csv"):
+                        return pd.read_csv(ruta), ruta
+                    return pd.read_excel(ruta), ruta
+            return pd.DataFrame(), None
+
+        def normalizar_resultado(df_base):
+            df_norm = df_base.copy()
+            if "Resultado" in df_norm.columns:
+                serie = df_norm["Resultado"]
+            elif "Resultado_Exito" in df_norm.columns:
+                serie = df_norm["Resultado_Exito"]
             else:
-                df['Resultado_Cat'] = df['Resultado'].map({'Aprobado': 'Aprobado', 'Reprobado': 'Reprobado'})
-            df['Resultado_Cat'] = df['Resultado_Cat'].fillna('No Definido')
-        else:
-            st.error("⚠️ La columna objetivo 'Resultado' no fue encontrada en el archivo de datos.")
+                return df_norm, False
+
+            if pd.api.types.is_numeric_dtype(serie):
+                if "Resultado_Exito" in df_norm.columns and "Resultado" not in df_norm.columns:
+                    df_norm["Resultado_Cat"] = serie.map({1: "Aprobado", 0: "Reprobado"})
+                else:
+                    df_norm["Resultado_Cat"] = serie.map({0: "Aprobado", 1: "Reprobado"})
+            else:
+                limpio = serie.astype(str).str.strip().str.lower()
+                df_norm["Resultado_Cat"] = limpio.map({
+                    "aprobado": "Aprobado",
+                    "aprobada": "Aprobado",
+                    "estable": "Aprobado",
+                    "reprobado": "Reprobado",
+                    "reprobada": "Reprobado",
+                    "riesgo": "Reprobado"
+                })
+            df_norm["Resultado_Cat"] = df_norm["Resultado_Cat"].fillna("No Definido")
+            return df_norm, True
+
+        def columnas_existentes(df_base, columnas):
+            return [col for col in columnas if col in df_base.columns]
+
+        def limpiar_numerica(df_base, columna):
+            valores = pd.to_numeric(df_base[columna], errors="coerce")
+            return df_base.assign(**{columna: valores}).dropna(subset=[columna])
+
+        def fig_histograma(df_base, columna, titulo, etiqueta=None, bins=None):
+            data = limpiar_numerica(df_base, columna)
+            if data.empty:
+                return None
+            fig = px.histogram(
+                data,
+                x=columna,
+                color="Resultado_Cat",
+                marginal="box",
+                nbins=bins,
+                barmode="overlay",
+                opacity=0.68,
+                color_discrete_map=colores_proyecto,
+                category_orders={"Resultado_Cat": orden_resultado},
+                title=titulo
+            )
+            fig.update_layout(
+                xaxis_title=etiqueta or columna.replace("_", " "),
+                yaxis_title="Frecuencia (numero de estudiantes)",
+                legend_title_text="Estatus del Alumno",
+                bargap=0.04,
+                height=430,
+                margin=dict(t=60, b=35, l=35, r=20)
+            )
+            return fig
+
+        def fig_barras(df_base, columna, titulo, orientacion="v", porcentaje=False):
+            data = df_base.dropna(subset=[columna, "Resultado_Cat"]).copy()
+            if data.empty:
+                return None
+            if porcentaje:
+                conteo = data.groupby([columna, "Resultado_Cat"]).size().reset_index(name="Alumnos")
+                total = conteo.groupby(columna)["Alumnos"].transform("sum")
+                conteo["Porcentaje"] = np.where(total > 0, conteo["Alumnos"] / total * 100, 0)
+                y_valor = "Porcentaje"
+                etiqueta_y = "Porcentaje (%)"
+            else:
+                conteo = data.groupby([columna, "Resultado_Cat"]).size().reset_index(name="Alumnos")
+                y_valor = "Alumnos"
+                etiqueta_y = "Numero de estudiantes"
+
+            fig_args = dict(
+                data_frame=conteo,
+                color="Resultado_Cat",
+                color_discrete_map=colores_proyecto,
+                category_orders={"Resultado_Cat": orden_resultado},
+                title=titulo,
+                barmode="group",
+                height=430,
+                text=y_valor
+            )
+            if orientacion == "h":
+                fig = px.bar(x=y_valor, y=columna, orientation="h", **fig_args)
+                fig.update_layout(xaxis_title=etiqueta_y, yaxis_title=columna.replace("_", " "))
+            else:
+                fig = px.bar(x=columna, y=y_valor, **fig_args)
+                fig.update_layout(xaxis_title=columna.replace("_", " "), yaxis_title=etiqueta_y)
+            fig.update_traces(texttemplate="%{text:.1f}" if porcentaje else "%{text}", textposition="outside")
+            fig.update_layout(legend_title_text="Estatus del Alumno", margin=dict(t=60, b=35, l=35, r=20))
+            return fig
+
+        df_cargado, fuente = cargar_dataset_dashboard()
+        if df_cargado.empty and st.session_state.get("df_crudo_entrenamiento") is not None:
+            df_cargado = st.session_state["df_crudo_entrenamiento"].copy()
+            fuente = "dataset en memoria del diagnostico IA"
+
+        if df_cargado.empty:
+            st.error("No se encontro un dataset para construir el dashboard.")
+            st.info("Coloca el archivo dataset_final_sin_duplicados.xlsx o carga un dataset desde el modulo de IA.")
             return
 
-        # 3. Configuración estética global (Respetando tus libretas .ipynb)
-        sns.set_theme(style="whitegrid", rc={"grid.linestyle": "--", "grid.alpha": 0.5})
-        plt.rcParams['font.family'] = 'sans-serif'
-        colores_proyecto = {"Aprobado": "#2ecc71", "Reprobado": "#ff5722", "No Definido": "#7f8c8d"}
+        df, tiene_resultado = normalizar_resultado(df_cargado)
+        if not tiene_resultado:
+            st.error("La columna Resultado o Resultado_Exito no fue encontrada en el dataset.")
+            return
 
-        # 4. Métricas rápidas en la parte superior
         total_alumnos = len(df)
-        aprobados = len(df[df['Resultado_Cat'] == 'Aprobado'])
-        reprobados = len(df[df['Resultado_Cat'] == 'Reprobado'])
-        tasa_aprobacion = (aprobados / total_alumnos) * 100 if total_alumnos > 0 else 0
+        aprobados = int((df["Resultado_Cat"] == "Aprobado").sum())
+        reprobados = int((df["Resultado_Cat"] == "Reprobado").sum())
+        tasa_aprobacion = (aprobados / total_alumnos) * 100 if total_alumnos else 0
 
+        st.caption(f"Fuente: {fuente}")
         m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.metric("Total Alumnos", f"{total_alumnos} 👥")
-        with m2:
-            st.metric("Aprobados", f"{aprobados} ✅", delta=f"{tasa_aprobacion:.1f}% del total")
-        with m3:
-            st.metric("Reprobados", f"{reprobados} ❌", delta=f"{(reprobados/total_alumnos)*100:.1f}%", delta_color="inverse")
-        with m4:
-            st.metric("Tasa de Éxito", f"{tasa_aprobacion:.1f}% 📈")
+        m1.metric("Total alumnos", f"{total_alumnos:,}")
+        m2.metric("Aprobados", f"{aprobados:,}", f"{tasa_aprobacion:.1f}%")
+        m3.metric("Reprobados", f"{reprobados:,}", f"{(reprobados / total_alumnos * 100 if total_alumnos else 0):.1f}%", delta_color="inverse")
+        m4.metric("Variables", f"{len(df.columns):,}")
 
-        st.write("")
+        hist_notebook = [
+            ("Promedio_General", "Distribucion del Promedio General", "Promedio General del Estudiante", 28),
+            ("Asistencia_Clases", "Porcentaje de Asistencia a Clases", "Asistencia a clases", 20),
+            ("Horas_Estudio_Semana", "Horas de Estudio Semanales", "Horas de estudio a la semana", 16),
+            ("Materias_Reprobadas", "Historial de Materias Reprobadas", "Materias reprobadas acumuladas", 12),
+            ("Calificacion_Ultima_Materia", "Calificacion de la Ultima Materia de Programacion", "Calificacion ultima materia", 20),
+            ("Practicas_Programacion", "Practicas de Programacion Realizadas", "Practicas de programacion", 12),
+            ("Motivacion_Programacion", "Motivacion hacia Programacion", "Motivacion", 8),
+            ("Confianza_Aprobar", "Confianza Autopercibida para Aprobar", "Confianza", 8),
+            ("Nivel_Estres", "Nivel de Estres Academico", "Nivel de estres", 8),
+            ("Uso_Plataformas", "Uso de Plataformas Educativas", "Uso de plataformas", 8),
+            ("Dificultad_Materia", "Dificultad Percibida de la Materia", "Dificultad percibida", 8),
+            ("Dias_Asistencia", "Dias de Asistencia Efectiva", "Dias de asistencia", 8),
+            ("Cumplimiento_Tareas", "Cumplimiento de Tareas", "Cumplimiento de tareas", 8),
+            ("Participacion_Clase", "Participacion Activa en Clase", "Participacion en clase", 8),
+            ("Computadora_Propia", "Disponibilidad de Computadora Propia", "Computadora propia", None),
+        ]
 
-        # 5. Distribución en Pestañas (Tabs) para limpieza visual
-        tab1, tab2, tab3 = st.tabs(["📈 Distribución de Variables", "📦 Análisis Estadístico (Boxplots)", "🔗 Matriz de Correlación"])
+        cat_notebook = [
+            ("Sistema_Escolar", "Incidencia de Aprobacion segun Modalidad", "v", True),
+            ("Internet_Casa", "Conectividad a Internet y Relacion con el Exito", "v", False),
+            ("Computadora_Propia", "Hardware Dedicado frente al Rezago", "v", True),
+            ("Participacion_Clase", "Participacion Interactiva y Vinculo Curricular", "v", False),
+            ("Cumplimiento_Tareas", "Aprobacion vinculada al Cumplimiento de Entregas", "v", True),
+            ("Uso_Plataformas", "Interaccion con Plataformas de Aprendizaje", "h", False),
+        ]
 
-        cols_excluir = ['Resultado', 'Resultado_Cat', 'ID', 'id', 'Id', 'Alumno', 'Nombre']
-        variables_analizables = [col for col in df.columns if col not in cols_excluir]
+        tab_resumen, tab_hist, tab_cat, tab_rel, tab_corr = st.tabs([
+            "Resumen", "Histogramas", "Categoricas", "Dispersion", "Correlacion"
+        ])
 
-        # --- PESTAÑA 1: DISTRIBUCIÓN ---
-        with tab1:
-            st.subheader("Análisis de Distribución Frecuencial")
-            st.markdown("Selecciona cualquier variable del dataset para observar cómo se distribuye entre alumnos Aprobados y Reprobados.")
-            
-            variable_seleccionada = st.selectbox(
-                "Selecciona la variable a graficar:", 
-                options=variables_analizables, 
-                key="sb_distribucion"
-            )
-
-            if variable_seleccionada:
-                fig, ax = plt.subplots(figsize=(10, 5))
-                
-                if df[variable_seleccionada].nunique() <= 12:
-                    sns.countplot(
-                        data=df, 
-                        x=variable_seleccionada, 
-                        hue='Resultado_Cat', 
-                        palette=colores_proyecto, 
-                        ax=ax
-                    )
-                    plt.title(f"Conteo de {variable_seleccionada} por Estado Académico", fontsize=12, pad=10)
-                    plt.ylabel("Cantidad de Alumnos")
-                else:
-                    sns.histplot(
-                        data=df, 
-                        x=variable_seleccionada, 
-                        hue='Resultado_Cat', 
-                        multiple="stack", 
-                        palette=colores_proyecto, 
-                        ax=ax, 
-                        kde=True
-                    )
-                    plt.title(f"Histograma de {variable_seleccionada} por Estado Académico", fontsize=12, pad=10)
-                    plt.ylabel("Densidad / Frecuencia")
-
-                plt.xlabel(variable_seleccionada)
-                plt.xticks(rotation=30, ha='right')
-                plt.tight_layout()
-                st.pyplot(fig)
-                plt.close(fig)
-
-            st.markdown("---")
-            st.subheader("Proporción General del Dataset")
-            
-            fig_pie = px.pie(
-                df, 
-                names='Resultado_Cat', 
-                color='Resultado_Cat',
-                color_discrete_map=colores_proyecto, 
-                hole=0.4,
-                title="Distribución Porcentual Total de Alumnos"
-            )
-            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-            fig_pie.update_layout(margin=dict(t=40, b=20, l=20, r=20))
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        # --- PESTAÑA 2: BOXPLOTS ---
-        with tab2:
-            st.subheader("Análisis de Dispersión y Outliers (Diagramas de Caja)")
-            st.markdown("Ideal para evaluar rangos, medianas y variabilidad de variables numéricas respecto al resultado final.")
-            
-            variables_numericas = df[variables_analizables].select_dtypes(include=[np.number]).columns.tolist()
-
-            if variables_numericas:
-                var_boxplot = st.selectbox(
-                    "Selecciona una variable numérica:", 
-                    options=variables_numericas, 
-                    key="sb_boxplot"
+        with tab_resumen:
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                fig_pie = px.pie(
+                    df,
+                    names="Resultado_Cat",
+                    color="Resultado_Cat",
+                    color_discrete_map=colores_proyecto,
+                    category_orders={"Resultado_Cat": orden_resultado},
+                    hole=0.45,
+                    title="Distribucion General del Estatus de Aprobacion"
                 )
+                fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+                fig_pie.update_layout(height=430, margin=dict(t=60, b=25, l=20, r=20))
+                st.plotly_chart(fig_pie, use_container_width=True)
+            with col_b:
+                fig_resultado = fig_barras(df, "Resultado_Cat", "Cantidad de Estudiantes por Estatus")
+                if fig_resultado:
+                    fig_resultado.update_layout(showlegend=False)
+                    st.plotly_chart(fig_resultado, use_container_width=True)
 
-                if var_boxplot:
-                    fig_box = px.box(
-                        df, 
-                        x="Resultado_Cat", 
-                        y=var_boxplot, 
+            disponibles = columnas_existentes(df, [c[0] for c in hist_notebook] + [c[0] for c in cat_notebook])
+            st.dataframe(
+                pd.DataFrame({"Grafica integrada": disponibles}),
+                use_container_width=True,
+                hide_index=True
+            )
+
+        with tab_hist:
+            st.subheader("Histogramas de frecuencia del notebook Graficas.ipynb")
+            graficas_hist = [(col, titulo, etiqueta, bins) for col, titulo, etiqueta, bins in hist_notebook if col in df.columns]
+            if not graficas_hist:
+                st.warning("No se encontraron columnas compatibles para los histogramas del notebook.")
+            for idx in range(0, len(graficas_hist), 2):
+                cols = st.columns(2)
+                for contenedor, item in zip(cols, graficas_hist[idx:idx + 2]):
+                    col, titulo, etiqueta, bins = item
+                    with contenedor:
+                        if pd.api.types.is_numeric_dtype(pd.to_numeric(df[col], errors="coerce")) and df[col].nunique(dropna=True) > 8:
+                            fig = fig_histograma(df, col, titulo, etiqueta, bins)
+                        else:
+                            fig = fig_barras(df, col, titulo)
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+
+        with tab_cat:
+            st.subheader("Graficas categoricas y porcentuales del notebook Graficas.ipynb")
+            graficas_cat = [(col, titulo, orientacion, porcentaje) for col, titulo, orientacion, porcentaje in cat_notebook if col in df.columns]
+            if not graficas_cat:
+                st.warning("No se encontraron columnas compatibles para las graficas categoricas.")
+            for idx in range(0, len(graficas_cat), 2):
+                cols = st.columns(2)
+                for contenedor, item in zip(cols, graficas_cat[idx:idx + 2]):
+                    col, titulo, orientacion, porcentaje = item
+                    with contenedor:
+                        fig = fig_barras(df, col, titulo, orientacion=orientacion, porcentaje=porcentaje)
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True)
+
+        with tab_rel:
+            st.subheader("Graficas de EntrenamientoFinal.ipynb")
+            if all(col in df.columns for col in ["Horas_Estudio_Semana", "Calificacion_Ultima_Materia"]):
+                data_scatter = df.copy()
+                data_scatter["Horas_Estudio_Semana"] = pd.to_numeric(data_scatter["Horas_Estudio_Semana"], errors="coerce")
+                data_scatter["Calificacion_Ultima_Materia"] = pd.to_numeric(data_scatter["Calificacion_Ultima_Materia"], errors="coerce")
+                data_scatter = data_scatter.dropna(subset=["Horas_Estudio_Semana", "Calificacion_Ultima_Materia"])
+                fig_scatter = px.scatter(
+                    data_scatter,
+                    x="Horas_Estudio_Semana",
+                    y="Calificacion_Ultima_Materia",
+                    color="Resultado_Cat",
+                    color_discrete_map=colores_proyecto,
+                    category_orders={"Resultado_Cat": orden_resultado},
+                    opacity=0.75,
+                    title="Relacion entre Horas de Estudio y Ultima Calificacion"
+                )
+                fig_scatter.update_layout(
+                    xaxis_title="Horas de estudio a la semana",
+                    yaxis_title="Calificacion de la ultima materia",
+                    height=520,
+                    margin=dict(t=60, b=35, l=35, r=20)
+                )
+                st.plotly_chart(fig_scatter, use_container_width=True)
+            else:
+                st.info("Faltan Horas_Estudio_Semana o Calificacion_Ultima_Materia para la dispersion principal.")
+
+            col_1, col_2 = st.columns(2)
+            with col_1:
+                if "Promedio_General" in df.columns:
+                    fig = fig_histograma(df, "Promedio_General", "Histograma Premium de Promedio General", "Promedio General", 30)
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+            with col_2:
+                if all(col in df.columns for col in ["Promedio_General", "Horas_Estudio_Semana"]):
+                    data_prom = df.copy()
+                    data_prom["Promedio_General"] = pd.to_numeric(data_prom["Promedio_General"], errors="coerce")
+                    data_prom["Horas_Estudio_Semana"] = pd.to_numeric(data_prom["Horas_Estudio_Semana"], errors="coerce")
+                    data_prom = data_prom.dropna(subset=["Promedio_General", "Horas_Estudio_Semana"])
+                    fig = px.density_contour(
+                        data_prom,
+                        x="Horas_Estudio_Semana",
+                        y="Promedio_General",
                         color="Resultado_Cat",
-                        color_discrete_map=colores_proyecto, 
-                        points="all",
-                        title=f"Dispersión Estadística de: {var_boxplot}"
+                        color_discrete_map=colores_proyecto,
+                        category_orders={"Resultado_Cat": orden_resultado},
+                        title="Dispersion Marginal: Horas de Estudio vs Promedio"
                     )
-                    fig_box.update_layout(
-                        xaxis_title="Resultado del Alumno", 
-                        yaxis_title=var_boxplot,
-                        margin=dict(t=50, b=30, l=30, r=30)
-                    )
-                    st.plotly_chart(fig_box, use_container_width=True)
-            else:
-                st.info("ℹ️ No se detectaron suficientes columnas numéricas continuas en el dataset para estructurar gráficos de caja.")
+                    fig.update_traces(contours_coloring="fill", opacity=0.45)
+                    fig.update_layout(height=430, margin=dict(t=60, b=35, l=35, r=20))
+                    st.plotly_chart(fig, use_container_width=True)
 
-        # --- PESTAÑA 3: MATRIZ DE CORRELACIÓN ---
-        with tab3:
-            st.subheader("Matriz de Correlación de Pearson")
-            st.markdown("Visualiza el nivel de dependencia lineal entre los factores del dataset de entrenamiento.")
+        with tab_corr:
+            st.subheader("Matriz de Correlacion de Pearson")
+            df_corr = df.copy()
+            if "Sistema_Escolar" in df_corr.columns and "Sistema_Escolar_Num" not in df_corr.columns:
+                df_corr["Sistema_Escolar_Num"] = df_corr["Sistema_Escolar"].map({"Escolarizado": 1, "Semiescolarizado": 0})
+            if "Resultado_Cat" in df_corr.columns:
+                df_corr["Resultado_Exito"] = df_corr["Resultado_Cat"].map({"Aprobado": 1, "Reprobado": 0})
 
-            df_num = df.select_dtypes(include=[np.number])
-            df_num = df_num.drop(columns=[c for c in ['ID', 'id', 'Id'] if c in df_num.columns], errors='ignore')
-
-            if not df_num.empty and len(df_num.columns) > 1:
-                corr_matrix = df_num.corr()
-                fig_corr, ax_corr = plt.subplots(figsize=(11, 9))
-                
-                sns.heatmap(
-                    corr_matrix, 
-                    annot=True, 
-                    fmt=".2f", 
-                    cmap="coolwarm", 
-                    ax=ax_corr, 
-                    cbar=True, 
-                    square=True, 
-                    linewidths=0.5, 
-                    annot_kws={"size": 8}
-                )
-                
-                plt.title("Mapa de Calor de Correlaciones (Dataset de Entrenamiento)", fontsize=13, pad=15)
-                plt.xticks(rotation=45, ha='right', fontsize=9)
-                plt.yticks(rotation=0, fontsize=9)
-                plt.tight_layout()
-                
-                st.pyplot(fig_corr)
-                plt.close(fig_corr)
-            else:
-                st.warning("⚠️ No hay suficientes variables numéricas en el dataset para procesar coeficientes de correlación.")
+            columnas_corr_preferidas = columnas_existentes(df_corr, [
+                "Promedio_General", "Sistema_Escolar_Num", "Resultado_Exito",
+                "Horas_Estudio_Semana", "Materias_Reprobadas", "Calificacion_Ultima_Materia",
+                "Dias_Asistencia", "Asistencia_Clases", "Cumplimiento_Tareas",
+                "Participacion_Clase", "Practicas_Programacion", "Uso_Plataformas",
+                "Motivacion_Programacion", "Confianza_Aprobar", "Dificultad_Materia", "Nivel_Estres"
+            ])
+            columnas_corr = st.multiselect(
+                "Variables para correlacion:",
+                options=df_corr.select_dtypes(include=[np.number]).columns.tolist(),
+                default=columnas_corr_preferidas[:12]
             )
+            if len(columnas_corr) < 2:
+                st.warning("Selecciona al menos dos variables numericas para construir la matriz.")
+            else:
+                corr = df_corr[columnas_corr].apply(pd.to_numeric, errors="coerce").corr()
+                fig_corr = px.imshow(
+                    corr,
+                    text_auto=".2f",
+                    color_continuous_scale="RdBu_r",
+                    zmin=-1,
+                    zmax=1,
+                    title="Mapa de Calor de Correlaciones"
+                )
+                fig_corr.update_layout(height=max(520, 38 * len(columnas_corr)), margin=dict(t=60, b=40, l=40, r=30))
+                st.plotly_chart(fig_corr, use_container_width=True)
 
-     
+            if all(col in df_corr.columns for col in ["Promedio_General", "Sistema_Escolar_Num", "Resultado_Exito"]):
+                st.markdown("#### Matriz especifica: Promedio, Sistema Escolar y Resultado")
+                corr_sistema = df_corr[["Promedio_General", "Sistema_Escolar_Num", "Resultado_Exito"]].apply(pd.to_numeric, errors="coerce").corr()
+                fig_sistema = px.imshow(
+                    corr_sistema,
+                    text_auto=".2f",
+                    color_continuous_scale="RdBu_r",
+                    zmin=-1,
+                    zmax=1,
+                    title="Desempeno Academico y Sistema Escolar"
+                )
+                fig_sistema.update_layout(height=420, margin=dict(t=60, b=35, l=35, r=20))
+                st.plotly_chart(fig_sistema, use_container_width=True)
     # --- PANTALLA: ALUMNO ---
     def pantalla_alumno():
         col1, col2 = st.columns([2.2, 0.8])
