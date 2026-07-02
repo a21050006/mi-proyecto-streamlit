@@ -604,7 +604,11 @@ else:
             data = df_base.dropna(subset=[columna, "Resultado_Cat"]).copy()
             if data.empty:
                 return None
-            if porcentaje:
+            if columna == "Resultado_Cat":
+                conteo = data[columna].value_counts().rename_axis("Resultado_Cat").reset_index(name="Alumnos")
+                y_valor = "Alumnos"
+                etiqueta_y = "Numero de estudiantes"
+            elif porcentaje:
                 conteo = data.groupby([columna, "Resultado_Cat"]).size().reset_index(name="Alumnos")
                 total = conteo.groupby(columna)["Alumnos"].transform("sum")
                 conteo["Porcentaje"] = np.where(total > 0, conteo["Alumnos"] / total * 100, 0)
