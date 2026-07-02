@@ -262,44 +262,57 @@ else:
                     perfil_actual = c.fetchone()
 
             if perfil_actual:
-                with st.form("form_datos_personales"):
-                    nuevo_nombre = st.text_input("Nombre completo", value=perfil_actual[0] or "")
-                    nuevo_correo = st.text_input("Correo electrónico", value=perfil_actual[1] or "")
-                    st.write("---")
-                    password_actual = st.text_input("Contraseña actual", type="password")
-                    nueva_password = st.text_input("Nueva contraseña", type="password")
-                    confirmar_password = st.text_input("Confirmar nueva contraseña", type="password")
+                col_perfil, col_password = st.columns([1, 1.15])
 
-                    if st.form_submit_button("Guardar datos personales", type="primary", use_container_width=True):
-                        if not nuevo_nombre.strip():
-                            st.error("El nombre no puede estar vacío.")
-                        else:
-                            password_guardar = perfil_actual[2]
-                            valido = True
+                with col_perfil:
+                    with st.container(border=True):
+                        st.markdown("### 👤 Datos personales")
+                        st.caption("Actualiza tu nombre y correo institucional.")
+                        with st.form("form_datos_personales"):
+                            nuevo_nombre = st.text_input("Nombre completo", value=perfil_actual[0] or "")
+                            nuevo_correo = st.text_input("Correo electrónico", value=perfil_actual[1] or "")
 
-                            if nueva_password or confirmar_password:
-                                if generar_md5(password_actual) != perfil_actual[2]:
+                            if st.form_submit_button("💾 Guardar datos", type="primary", use_container_width=True):
+                                if not nuevo_nombre.strip():
+                                    st.error("El nombre no puede estar vacío.")
+                                else:
+                                    with get_db_connection() as conn:
+                                        with conn.cursor() as c:
+                                            c.execute("UPDATE usuarios SET nombre=%s, correo=%s WHERE matricula=%s",
+                                                      (nuevo_nombre.strip(), nuevo_correo.strip(), st.session_state['usuario_actual']))
+                                            conn.commit()
+                                    st.session_state['nombre'] = nuevo_nombre.strip()
+                                    st.success("Datos personales actualizados correctamente.")
+                                    time.sleep(0.5)
+                                    st.rerun()
+
+                with col_password:
+                    with st.container(border=True):
+                        st.markdown("### 🔐 Cambiar Contraseña de Acceso")
+                        st.caption("Modifica tu clave periódicamente para mantener protegidos los archivos y folios de tus proyectos de investigación.")
+                        with st.form("form_cambiar_password"):
+                            password_actual = st.text_input("Contraseña Actual", type="password", placeholder="Ingresa tu contraseña actual")
+                            nueva_password = st.text_input("Nueva Contraseña", type="password", placeholder="Mínimo 8 caracteres")
+                            confirmar_password = st.text_input("Confirmar Nueva Contraseña", type="password", placeholder="Repite la nueva contraseña")
+
+                            if st.form_submit_button("🔑 ACTUALIZAR CONTRASEÑA", type="primary", use_container_width=True):
+                                if not password_actual or not nueva_password or not confirmar_password:
+                                    st.error("Completa los tres campos de contraseña.")
+                                elif generar_md5(password_actual) != perfil_actual[2]:
                                     st.error("La contraseña actual no es correcta.")
-                                    valido = False
                                 elif nueva_password != confirmar_password:
                                     st.error("La nueva contraseña y la confirmación no coinciden.")
-                                    valido = False
                                 elif not validar_password_moodle(nueva_password):
                                     st.error("La nueva contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.")
-                                    valido = False
                                 else:
-                                    password_guardar = generar_md5(nueva_password)
-
-                            if valido:
-                                with get_db_connection() as conn:
-                                    with conn.cursor() as c:
-                                        c.execute("UPDATE usuarios SET nombre=%s, correo=%s, password=%s WHERE matricula=%s",
-                                                  (nuevo_nombre.strip(), nuevo_correo.strip(), password_guardar, st.session_state['usuario_actual']))
-                                        conn.commit()
-                                st.session_state['nombre'] = nuevo_nombre.strip()
-                                st.success("Datos personales actualizados correctamente.")
-                                time.sleep(0.5)
-                                st.rerun()
+                                    with get_db_connection() as conn:
+                                        with conn.cursor() as c:
+                                            c.execute("UPDATE usuarios SET password=%s WHERE matricula=%s",
+                                                      (generar_md5(nueva_password), st.session_state['usuario_actual']))
+                                            conn.commit()
+                                    st.success("Contraseña actualizada correctamente.")
+                                    time.sleep(0.5)
+                                    st.rerun()
             else:
                 st.warning("No se encontraron datos del usuario actual.")
         except mysql.connector.Error as err:
@@ -566,8 +579,8 @@ else:
             
 
     def mostrar_dashboard_interactivo():
-        st.title("Dashboard de Analisis Exploratorio Avanzado")
-        st.markdown("Graficas integradas desde Graficas.ipynb y EntrenamientoFinal.ipynb, generadas de forma interactiva con Plotly.")
+        st.title("Dashboard de Alumnos Registrados")
+        st.markdown("Indicadores construidos con los alumnos dados de alta en el sistema, sus cuestionarios y sus evaluaciones docentes.")
 
         colores_proyecto = {
             "Aprobado": "#2ecc71",
@@ -576,22 +589,79 @@ else:
         }
         orden_resultado = ["Aprobado", "Reprobado", "No Definido"]
 
-        @st.cache_data(show_spinner=False)
-        def cargar_dataset_dashboard():
-            rutas = [
-                "dataset_compartido_admin.xlsx",
-                "dataset_compartido_admin.csv",
-                "dataset_final_sin_duplicados.xlsx",
-                "dataset_final_sin_duplicados.xlsx - Sheet1.csv",
-                "dataset_completo_machine_learning.xlsx",
-                "dataset_maestro.csv"
-            ]
-            for ruta in rutas:
-                if os.path.exists(ruta):
-                    if ruta.lower().endswith(".csv"):
-                        return pd.read_csv(ruta), ruta
-                    return pd.read_excel(ruta), ruta
-            return pd.DataFrame(), None
+        def cargar_alumnos_sistema():
+            query = """
+                SELECT
+                    u.matricula, u.nombre,
+                    (SELECT nombre FROM usuarios WHERE matricula = u.docente_id) as docente_tutor,
+                    ra.semestre, ra.sexo, ra.sistema,
+                    ra.horas_estudio, ra.dias_estudio, ra.apoyo, ra.motivacion,
+                    ra.confianza, ra.dificultad, ra.estres, ra.computadora,
+                    ra.internet, ra.calidad_internet,
+                    ed.promedio, ed.reprobadas, ed.calif_ultima,
+                    ed.dias_asistencia, ed.asistencia_clases, ed.cumplimiento,
+                    ed.participacion, ed.practicas, ed.uso_plataformas
+                FROM usuarios u
+                INNER JOIN respuestas_alumnos ra ON u.matricula = ra.matricula
+                INNER JOIN evaluaciones_docentes ed ON u.matricula = ed.matricula
+                WHERE u.rol = 'alumno'
+            """
+            parametros = []
+            if st.session_state.get('rol_actual') == 'docente':
+                query += " AND u.docente_id = %s"
+                parametros.append(st.session_state['usuario_actual'])
+
+            query_total = "SELECT COUNT(*) AS total FROM usuarios u WHERE u.rol = 'alumno'"
+            parametros_total = []
+            if st.session_state.get('rol_actual') == 'docente':
+                query_total += " AND u.docente_id = %s"
+                parametros_total.append(st.session_state['usuario_actual'])
+
+            with get_db_connection() as conn:
+                total_registrados = pd.read_sql(query_total, conn, params=parametros_total if parametros_total else None).iloc[0]['total']
+                df_db = pd.read_sql(query, conn, params=parametros if parametros else None)
+
+            st.session_state['dash_total_registrados'] = int(total_registrados)
+
+            if df_db.empty:
+                return pd.DataFrame()
+
+            df_sistema = pd.DataFrame()
+            df_sistema['Matrícula'] = df_db['matricula']
+            df_sistema['Nombre'] = df_db['nombre']
+            df_sistema['Docente_Tutor'] = df_db['docente_tutor'].fillna('Sin asignar')
+            df_sistema['Semestre'] = df_db['semestre']
+            df_sistema['Sexo'] = df_db['sexo']
+            df_sistema['Sistema_Escolar'] = df_db['sistema']
+            df_sistema['Sistema_Escolar_Num'] = df_db['sistema'].map({'Escolarizado': 1, 'Semiescolarizado': 0}).fillna(0)
+            df_sistema['Promedio_General'] = df_db['promedio']
+            df_sistema['Materias_Reprobadas'] = df_db['reprobadas']
+            df_sistema['Calificacion_Ultima_Materia'] = df_db['calif_ultima']
+            df_sistema['Dias_Asistencia'] = df_db['dias_asistencia']
+            df_sistema['Asistencia_Clases'] = df_db['asistencia_clases']
+            df_sistema['Cumplimiento_Tareas'] = df_db['cumplimiento']
+            df_sistema['Participacion_Clase'] = df_db['participacion']
+            df_sistema['Practicas_Programacion'] = df_db['practicas']
+            df_sistema['Uso_Plataformas'] = df_db['uso_plataformas']
+            df_sistema['Horas_Estudio_Semana'] = df_db['horas_estudio']
+            df_sistema['Dias_Estudio_Semana'] = df_db['dias_estudio']
+            df_sistema['Apoyo_Familiar'] = df_db['apoyo']
+            df_sistema['Motivacion_Programacion'] = df_db['motivacion']
+            df_sistema['Confianza_Aprobar'] = df_db['confianza']
+            df_sistema['Dificultad_Materia'] = df_db['dificultad']
+            df_sistema['Nivel_Estres'] = df_db['estres']
+            df_sistema['Computadora_Propia'] = df_db['computadora']
+            df_sistema['Computadora_Propia_Num'] = df_db['computadora'].map({'Sí': 1, 'No': 0, 'SÃ­': 1}).fillna(0)
+            df_sistema['Internet_Casa'] = df_db['internet']
+            df_sistema['Internet_Casa_Num'] = df_db['internet'].map({'Sí': 1, 'No': 0, 'SÃ­': 1}).fillna(0)
+            df_sistema['Calidad_Internet'] = df_db['calidad_internet']
+            df_sistema['Resultado'] = np.where(
+                (pd.to_numeric(df_sistema['Promedio_General'], errors='coerce') >= 70) &
+                (pd.to_numeric(df_sistema['Materias_Reprobadas'], errors='coerce').fillna(0) == 0),
+                'Aprobado',
+                'Reprobado'
+            )
+            return df_sistema
 
         def normalizar_resultado(df_base):
             df_norm = df_base.copy()
@@ -692,19 +762,19 @@ else:
             fig.update_layout(legend_title_text="Estatus del Alumno", margin=dict(t=60, b=35, l=35, r=20))
             return fig
 
-        df_cargado, fuente = cargar_dataset_dashboard()
-        if df_cargado.empty and st.session_state.get("df_crudo_entrenamiento") is not None:
-            df_cargado = st.session_state["df_crudo_entrenamiento"].copy()
-            fuente = "dataset en memoria del diagnostico IA"
+        df_cargado = cargar_alumnos_sistema()
+        fuente = "Alumnos registrados en el sistema con cuestionario y evaluación docente"
 
         if df_cargado.empty:
-            st.error("No se encontro un dataset para construir el dashboard.")
-            st.info("Coloca el archivo dataset_final_sin_duplicados.xlsx o carga un dataset desde el modulo de IA.")
+            total_registrados = st.session_state.get("dash_total_registrados", 0)
+            st.metric("Alumnos registrados", f"{total_registrados:,}")
+            st.warning("Aún no hay alumnos con datos completos para construir las gráficas del dashboard.")
+            st.info("Para aparecer aquí, el alumno debe estar registrado, responder su cuestionario y contar con evaluación docente.")
             return
 
         df, tiene_resultado = normalizar_resultado(df_cargado)
         if not tiene_resultado:
-            st.error("La columna Resultado o Resultado_Exito no fue encontrada en el dataset.")
+            st.error("No se pudo calcular el resultado académico de los alumnos registrados.")
             return
 
         total_alumnos = len(df)
@@ -714,10 +784,11 @@ else:
 
         st.caption(f"Fuente: {fuente}")
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total alumnos", f"{total_alumnos:,}")
-        m2.metric("Aprobados", f"{aprobados:,}", f"{tasa_aprobacion:.1f}%")
-        m3.metric("Reprobados", f"{reprobados:,}", f"{(reprobados / total_alumnos * 100 if total_alumnos else 0):.1f}%", delta_color="inverse")
-        m4.metric("Variables", f"{len(df.columns):,}")
+        total_registrados = st.session_state.get("dash_total_registrados", total_alumnos)
+        m1.metric("Alumnos registrados", f"{total_registrados:,}")
+        m2.metric("Expedientes completos", f"{total_alumnos:,}")
+        m3.metric("Aprobados", f"{aprobados:,}", f"{tasa_aprobacion:.1f}%")
+        m4.metric("Reprobados", f"{reprobados:,}", f"{(reprobados / total_alumnos * 100 if total_alumnos else 0):.1f}%", delta_color="inverse")
 
         hist_notebook = [
             ("Promedio_General", "Distribucion del Promedio General", "Promedio General del Estudiante", 28),
@@ -779,7 +850,7 @@ else:
             )
 
         with tab_hist:
-            st.subheader("Histogramas de frecuencia del notebook Graficas.ipynb")
+            st.subheader("Distribuciones de los alumnos registrados")
             graficas_hist = [(col, titulo, etiqueta, bins) for col, titulo, etiqueta, bins in hist_notebook if col in df.columns]
             if not graficas_hist:
                 st.warning("No se encontraron columnas compatibles para los histogramas del notebook.")
@@ -796,7 +867,7 @@ else:
                             st.plotly_chart(fig, use_container_width=True)
 
         with tab_cat:
-            st.subheader("Graficas categoricas y porcentuales del notebook Graficas.ipynb")
+            st.subheader("Comparativas por características de los alumnos")
             graficas_cat = [(col, titulo, orientacion, porcentaje) for col, titulo, orientacion, porcentaje in cat_notebook if col in df.columns]
             if not graficas_cat:
                 st.warning("No se encontraron columnas compatibles para las graficas categoricas.")
@@ -810,7 +881,7 @@ else:
                             st.plotly_chart(fig, use_container_width=True)
 
         with tab_rel:
-            st.subheader("Graficas de EntrenamientoFinal.ipynb")
+            st.subheader("Relaciones entre hábitos y desempeño")
             if all(col in df.columns for col in ["Horas_Estudio_Semana", "Calificacion_Ultima_Materia"]):
                 data_scatter = df.copy()
                 data_scatter["Horas_Estudio_Semana"] = pd.to_numeric(data_scatter["Horas_Estudio_Semana"], errors="coerce")
