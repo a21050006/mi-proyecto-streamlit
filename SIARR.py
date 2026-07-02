@@ -877,7 +877,8 @@ else:
                     confianza = st.selectbox("Confianza en Aprobar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     dificultad = st.selectbox("Dificultad (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     apoyo = st.selectbox("Apoyo Familiar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
-                    estres = st.selectdio("¿Computadora Propia?", ["Sí", "No"], index=None)
+                    estres = st.selectbox("Nivel de Estrés (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
+                    computadora = st.selectbox("¿Computadora Propia?", ["Sí", "No"], index=None, placeholder="Selecciona una opción...")
                     internet = st.radio("¿Internet en Casa?", ["Sí", "No"], index=None)
                     calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     
