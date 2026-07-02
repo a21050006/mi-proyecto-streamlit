@@ -511,149 +511,149 @@ else:
                 use_container_width=True
             )
 
-  # ==========================================
-# MÓDULO: DASHBOARD INTERACTIVO INNOVADOR
-# ==========================================
-def mostrar_dashboard_interactivo():
-    import streamlit as st
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import textwrap
-    import plotly.express as px
-
-    if not st.session_state.get('analisis_completado') or st.session_state.get('df_resultados') is None:
-        st.warning(" ⚠️  Primero debes ejecutar el diagnóstico de IA en la pestaña ' 🚀  Ejecutar Diagnóstico' para visualizar el Dashboard.")
-        return
-
-    df = st.session_state['df_resultados'].copy()
-    df_crudo = st.session_state.get('df_crudo_entrenamiento')
+      # ==========================================
+    # MÓDULO: DASHBOARD INTERACTIVO INNOVADOR
+    # ==========================================
+    def mostrar_dashboard_interactivo():
+        import streamlit as st
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        import textwrap
+        import plotly.express as px
     
-    if df_crudo is None:
-        df_crudo = df.copy()
-
-    st.markdown("##  📊  Dashboard Completo de Análisis y Resultados IA")
-    st.write("Explora de forma visual e interactiva el comportamiento de TODA la población estudiantil analizada.")
-    st.write("---")
-
-    # Asegurar nombres limpios en la variable objetivo para gráficos
-    if 'Resultado' not in df_crudo.columns and 'Resultado IA' in df.columns:
-        df_crudo['Resultado'] = df['Resultado IA'].map({' ✅  ESTABLE': 'Aprobado', ' ⚠️  RIESGO': 'Reprobado'})
-    elif 'Resultado' in df_crudo.columns:
-        df_crudo['Resultado'] = df_crudo['Resultado'].map({0: 'Aprobado', 1: 'Reprobado', 'Aprobado': 'Aprobado', 'Reprobado': 'Reprobado'})
-
-    # Estética global del proyecto de gráficas (Basado en tu archivo Graficas.ipynb)
-    sns.set_theme(style="whitegrid", rc={"grid.linestyle": "--", "grid.alpha": 0.5})
-    plt.rcParams['font.family'] = 'sans-serif'
-    colores = {"Aprobado": "#2ecc71", "Reprobado": "#ff5722"}
-
-    # ==========================
-    # 1. MATRIZ DE CORRELACIÓN (De EntrenamientoFinal.ipynb)
-    # ==========================
-    st.markdown("###  🧠  Matriz de Correlación de Variables")
-    st.write("Identifica cómo se relacionan los factores académicos y personales entre sí.")
-    cols_numericas = df_crudo.select_dtypes(include=['float64', 'int64']).columns
-    if len(cols_numericas) > 1:
-        fig_corr, ax_corr = plt.subplots(figsize=(14, 10))
-        corr = df_crudo[cols_numericas].corr()
-        sns.heatmap(corr, annot=False, cmap='coolwarm', ax=ax_corr, linewidths=0.5)
-        ax_corr.set_title("Relación entre factores académicos y personales", fontsize=15, fontweight='bold', pad=15, color='#1d3557')
-        st.pyplot(fig_corr)
-    else:
-        st.info("No hay suficientes variables numéricas para generar la Matriz de Correlación.")
+        if not st.session_state.get('analisis_completado') or st.session_state.get('df_resultados') is None:
+            st.warning(" ⚠️  Primero debes ejecutar el diagnóstico de IA en la pestaña ' 🚀  Ejecutar Diagnóstico' para visualizar el Dashboard.")
+            return
     
-    st.write("---")
-    st.markdown("###  📈  Gráficas Principales de Análisis Exploratorio")
-
-    col_graf1, col_graf2 = st.columns(2)
-
-    # ==========================
-    # 2. GRÁFICAS DESTACADAS
-    # ==========================
-    with col_graf1:
-        # Gráfica: Computadora Propia (Figura 16 de tu código)
-        if 'Computadora_Propia' in df_crudo.columns:
-            st.markdown("#### Disponibilidad de Computadora Propia")
-            fig1, ax1 = plt.subplots(figsize=(7, 5))
-            sns.histplot(data=df_crudo, x="Computadora_Propia", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="layer", kde=True, alpha=0.6, edgecolor="white", ax=ax1)
-            ax1.set_xlabel("Disponibilidad (0=No, 1=Sí)", fontsize=11, fontweight='bold', color='#393e46')
-            ax1.set_ylabel("Frecuencia (Estudiantes)", fontsize=11, fontweight='bold', color='#393e46')
-            if ax1.get_legend(): ax1.get_legend().set_title("Estatus del Alumno")
-            sns.despine(left=True, bottom=True)
-            st.pyplot(fig1)
-
-        # Gráfica: Motivación Programación
-        if 'Motivacion_Programacion' in df_crudo.columns:
-            st.markdown("#### Motivación hacia la Programación")
-            fig2, ax2 = plt.subplots(figsize=(7, 5))
-            sns.histplot(data=df_crudo, x="Motivacion_Programacion", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, ax=ax2)
-            ax2.set_xlabel("Nivel de Motivación", fontsize=11, fontweight='bold')
-            ax2.set_ylabel("Frecuencia", fontsize=11, fontweight='bold')
-            st.pyplot(fig2)
-
-    with col_graf2:
-        # Gráfica: Horas de Estudio
-        if 'Horas_Estudio_Semana' in df_crudo.columns:
-            st.markdown("#### Impacto de las Horas de Estudio")
-            fig3, ax3 = plt.subplots(figsize=(7, 5))
-            sns.boxplot(data=df_crudo, x="Resultado", y="Horas_Estudio_Semana", palette=colores, ax=ax3)
-            ax3.set_xlabel("Estatus del Alumno", fontsize=11, fontweight='bold')
-            ax3.set_ylabel("Horas de Estudio por Semana", fontsize=11, fontweight='bold')
-            st.pyplot(fig3)
-
-        # Gráfica: Dificultad Percibida
-        if 'Dificultad_Materia' in df_crudo.columns:
-            st.markdown("#### Dificultad Percibida de la Materia")
-            fig4, ax4 = plt.subplots(figsize=(7, 5))
-            sns.histplot(data=df_crudo, x="Dificultad_Materia", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, ax=ax4)
-            ax4.set_xlabel("Nivel de Dificultad", fontsize=11, fontweight='bold')
-            ax4.set_ylabel("Frecuencia", fontsize=11, fontweight='bold')
-            st.pyplot(fig4)
-
-    st.write("---")
-    
-    # ==========================
-    # 3. TODAS LAS DEMÁS GRÁFICAS (Generación Dinámica)
-    # ==========================
-    st.markdown("### 🔍 Exploración de Todas las Variables del Estudio")
-    st.write("Selecciona cualquier variable del dataset para visualizar su distribución y cómo impacta en la aprobación o reprobación del alumno.")
-    
-    # Excluir columnas que no son útiles para graficar como histogramas
-    columnas_excluidas = ['Marca_temporal', 'Dirección_de_correo_electrónico', 'Correo', 'Nombre_completo', 'Matrícula', 'Resultado', 'Resultado IA']
-    columnas_graficables = [col for col in df_crudo.columns if col not in columnas_excluidas]
-    
-    variable_seleccionada = st.selectbox("Elige la variable que deseas graficar:", columnas_graficables)
-    
-    if variable_seleccionada:
-        col_dinamica1, col_dinamica2 = st.columns([2, 1])
+        df = st.session_state['df_resultados'].copy()
+        df_crudo = st.session_state.get('df_crudo_entrenamiento')
         
-        with col_dinamica1:
-            fig_din, ax_din = plt.subplots(figsize=(9, 6))
+        if df_crudo is None:
+            df_crudo = df.copy()
+    
+        st.markdown("##  📊  Dashboard Completo de Análisis y Resultados IA")
+        st.write("Explora de forma visual e interactiva el comportamiento de TODA la población estudiantil analizada.")
+        st.write("---")
+    
+        # Asegurar nombres limpios en la variable objetivo para gráficos
+        if 'Resultado' not in df_crudo.columns and 'Resultado IA' in df.columns:
+            df_crudo['Resultado'] = df['Resultado IA'].map({' ✅  ESTABLE': 'Aprobado', ' ⚠️  RIESGO': 'Reprobado'})
+        elif 'Resultado' in df_crudo.columns:
+            df_crudo['Resultado'] = df_crudo['Resultado'].map({0: 'Aprobado', 1: 'Reprobado', 'Aprobado': 'Aprobado', 'Reprobado': 'Reprobado'})
+    
+        # Estética global del proyecto de gráficas (Basado en tu archivo Graficas.ipynb)
+        sns.set_theme(style="whitegrid", rc={"grid.linestyle": "--", "grid.alpha": 0.5})
+        plt.rcParams['font.family'] = 'sans-serif'
+        colores = {"Aprobado": "#2ecc71", "Reprobado": "#ff5722"}
+    
+        # ==========================
+        # 1. MATRIZ DE CORRELACIÓN (De EntrenamientoFinal.ipynb)
+        # ==========================
+        st.markdown("###  🧠  Matriz de Correlación de Variables")
+        st.write("Identifica cómo se relacionan los factores académicos y personales entre sí.")
+        cols_numericas = df_crudo.select_dtypes(include=['float64', 'int64']).columns
+        if len(cols_numericas) > 1:
+            fig_corr, ax_corr = plt.subplots(figsize=(14, 10))
+            corr = df_crudo[cols_numericas].corr()
+            sns.heatmap(corr, annot=False, cmap='coolwarm', ax=ax_corr, linewidths=0.5)
+            ax_corr.set_title("Relación entre factores académicos y personales", fontsize=15, fontweight='bold', pad=15, color='#1d3557')
+            st.pyplot(fig_corr)
+        else:
+            st.info("No hay suficientes variables numéricas para generar la Matriz de Correlación.")
+        
+        st.write("---")
+        st.markdown("###  📈  Gráficas Principales de Análisis Exploratorio")
+    
+        col_graf1, col_graf2 = st.columns(2)
+    
+        # ==========================
+        # 2. GRÁFICAS DESTACADAS
+        # ==========================
+        with col_graf1:
+            # Gráfica: Computadora Propia (Figura 16 de tu código)
+            if 'Computadora_Propia' in df_crudo.columns:
+                st.markdown("#### Disponibilidad de Computadora Propia")
+                fig1, ax1 = plt.subplots(figsize=(7, 5))
+                sns.histplot(data=df_crudo, x="Computadora_Propia", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="layer", kde=True, alpha=0.6, edgecolor="white", ax=ax1)
+                ax1.set_xlabel("Disponibilidad (0=No, 1=Sí)", fontsize=11, fontweight='bold', color='#393e46')
+                ax1.set_ylabel("Frecuencia (Estudiantes)", fontsize=11, fontweight='bold', color='#393e46')
+                if ax1.get_legend(): ax1.get_legend().set_title("Estatus del Alumno")
+                sns.despine(left=True, bottom=True)
+                st.pyplot(fig1)
+    
+            # Gráfica: Motivación Programación
+            if 'Motivacion_Programacion' in df_crudo.columns:
+                st.markdown("#### Motivación hacia la Programación")
+                fig2, ax2 = plt.subplots(figsize=(7, 5))
+                sns.histplot(data=df_crudo, x="Motivacion_Programacion", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, ax=ax2)
+                ax2.set_xlabel("Nivel de Motivación", fontsize=11, fontweight='bold')
+                ax2.set_ylabel("Frecuencia", fontsize=11, fontweight='bold')
+                st.pyplot(fig2)
+    
+        with col_graf2:
+            # Gráfica: Horas de Estudio
+            if 'Horas_Estudio_Semana' in df_crudo.columns:
+                st.markdown("#### Impacto de las Horas de Estudio")
+                fig3, ax3 = plt.subplots(figsize=(7, 5))
+                sns.boxplot(data=df_crudo, x="Resultado", y="Horas_Estudio_Semana", palette=colores, ax=ax3)
+                ax3.set_xlabel("Estatus del Alumno", fontsize=11, fontweight='bold')
+                ax3.set_ylabel("Horas de Estudio por Semana", fontsize=11, fontweight='bold')
+                st.pyplot(fig3)
+    
+            # Gráfica: Dificultad Percibida
+            if 'Dificultad_Materia' in df_crudo.columns:
+                st.markdown("#### Dificultad Percibida de la Materia")
+                fig4, ax4 = plt.subplots(figsize=(7, 5))
+                sns.histplot(data=df_crudo, x="Dificultad_Materia", hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, ax=ax4)
+                ax4.set_xlabel("Nivel de Dificultad", fontsize=11, fontweight='bold')
+                ax4.set_ylabel("Frecuencia", fontsize=11, fontweight='bold')
+                st.pyplot(fig4)
+    
+        st.write("---")
+        
+        # ==========================
+        # 3. TODAS LAS DEMÁS GRÁFICAS (Generación Dinámica)
+        # ==========================
+        st.markdown("### 🔍 Exploración de Todas las Variables del Estudio")
+        st.write("Selecciona cualquier variable del dataset para visualizar su distribución y cómo impacta en la aprobación o reprobación del alumno.")
+        
+        # Excluir columnas que no son útiles para graficar como histogramas
+        columnas_excluidas = ['Marca_temporal', 'Dirección_de_correo_electrónico', 'Correo', 'Nombre_completo', 'Matrícula', 'Resultado', 'Resultado IA']
+        columnas_graficables = [col for col in df_crudo.columns if col not in columnas_excluidas]
+        
+        variable_seleccionada = st.selectbox("Elige la variable que deseas graficar:", columnas_graficables)
+        
+        if variable_seleccionada:
+            col_dinamica1, col_dinamica2 = st.columns([2, 1])
             
-            # Verificar si la variable tiene muchos valores únicos (para usar KDE) o pocos (para barras separadas)
-            if df_crudo[variable_seleccionada].nunique() > 10:
-                sns.histplot(data=df_crudo, x=variable_seleccionada, hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="layer", kde=True, alpha=0.6, edgecolor="white", ax=ax_din)
-            else:
-                sns.histplot(data=df_crudo, x=variable_seleccionada, hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, edgecolor="white", ax=ax_din)
+            with col_dinamica1:
+                fig_din, ax_din = plt.subplots(figsize=(9, 6))
                 
-            ax_din.set_xlabel(variable_seleccionada.replace("_", " "), fontsize=12, fontweight='bold', color='#393e46', labelpad=10)
-            ax_din.set_ylabel("Frecuencia (Estudiantes)", fontsize=12, fontweight='bold', color='#393e46', labelpad=10)
-            if ax_din.get_legend(): ax_din.get_legend().set_title("Estatus")
-            sns.despine(left=True, bottom=True)
-            
-            st.pyplot(fig_din)
-            
-        with col_dinamica2:
-            st.info(f"**Análisis de: {variable_seleccionada.replace('_', ' ')}**")
-            st.write(f"Esta gráfica representa la distribución de la variable **{variable_seleccionada}** extraída de tu archivo de gráficas.")
-            st.write("Las barras **verdes** corresponden a los estudiantes 'Aprobados' y las **corales** identifican a los 'Reprobados'.")
-            
-            # Gráfica de caja (Boxplot) complementaria para ver promedios
-            if df_crudo[variable_seleccionada].dtype in ['float64', 'int64']:
-                fig_box, ax_box = plt.subplots(figsize=(4, 3))
-                sns.boxplot(data=df_crudo, x="Resultado", y=variable_seleccionada, palette=colores, ax=ax_box)
-                ax_box.set_xlabel("")
-                ax_box.set_ylabel(variable_seleccionada.replace("_", " "), fontsize=9)
-                st.pyplot(fig_box)
+                # Verificar si la variable tiene muchos valores únicos (para usar KDE) o pocos (para barras separadas)
+                if df_crudo[variable_seleccionada].nunique() > 10:
+                    sns.histplot(data=df_crudo, x=variable_seleccionada, hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="layer", kde=True, alpha=0.6, edgecolor="white", ax=ax_din)
+                else:
+                    sns.histplot(data=df_crudo, x=variable_seleccionada, hue="Resultado", hue_order=["Aprobado", "Reprobado"], palette=colores, multiple="dodge", shrink=.8, edgecolor="white", ax=ax_din)
+                    
+                ax_din.set_xlabel(variable_seleccionada.replace("_", " "), fontsize=12, fontweight='bold', color='#393e46', labelpad=10)
+                ax_din.set_ylabel("Frecuencia (Estudiantes)", fontsize=12, fontweight='bold', color='#393e46', labelpad=10)
+                if ax_din.get_legend(): ax_din.get_legend().set_title("Estatus")
+                sns.despine(left=True, bottom=True)
+                
+                st.pyplot(fig_din)
+                
+            with col_dinamica2:
+                st.info(f"**Análisis de: {variable_seleccionada.replace('_', ' ')}**")
+                st.write(f"Esta gráfica representa la distribución de la variable **{variable_seleccionada}** extraída de tu archivo de gráficas.")
+                st.write("Las barras **verdes** corresponden a los estudiantes 'Aprobados' y las **corales** identifican a los 'Reprobados'.")
+                
+                # Gráfica de caja (Boxplot) complementaria para ver promedios
+                if df_crudo[variable_seleccionada].dtype in ['float64', 'int64']:
+                    fig_box, ax_box = plt.subplots(figsize=(4, 3))
+                    sns.boxplot(data=df_crudo, x="Resultado", y=variable_seleccionada, palette=colores, ax=ax_box)
+                    ax_box.set_xlabel("")
+                    ax_box.set_ylabel(variable_seleccionada.replace("_", " "), fontsize=9)
+                    st.pyplot(fig_box)
 
     # --- PANTALLA: ALUMNO ---
     def pantalla_alumno():
