@@ -254,6 +254,57 @@ else:
             st.session_state['dash_semestre'] = None
             st.rerun()
 
+    with st.expander("👤 Datos personales", expanded=False):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as c:
+                    c.execute("SELECT nombre, correo, password FROM usuarios WHERE matricula=%s", (st.session_state['usuario_actual'],))
+                    perfil_actual = c.fetchone()
+
+            if perfil_actual:
+                with st.form("form_datos_personales"):
+                    nuevo_nombre = st.text_input("Nombre completo", value=perfil_actual[0] or "")
+                    nuevo_correo = st.text_input("Correo electrónico", value=perfil_actual[1] or "")
+                    st.write("---")
+                    password_actual = st.text_input("Contraseña actual", type="password")
+                    nueva_password = st.text_input("Nueva contraseña", type="password")
+                    confirmar_password = st.text_input("Confirmar nueva contraseña", type="password")
+
+                    if st.form_submit_button("Guardar datos personales", type="primary", use_container_width=True):
+                        if not nuevo_nombre.strip():
+                            st.error("El nombre no puede estar vacío.")
+                        else:
+                            password_guardar = perfil_actual[2]
+                            valido = True
+
+                            if nueva_password or confirmar_password:
+                                if generar_md5(password_actual) != perfil_actual[2]:
+                                    st.error("La contraseña actual no es correcta.")
+                                    valido = False
+                                elif nueva_password != confirmar_password:
+                                    st.error("La nueva contraseña y la confirmación no coinciden.")
+                                    valido = False
+                                elif not validar_password_moodle(nueva_password):
+                                    st.error("La nueva contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.")
+                                    valido = False
+                                else:
+                                    password_guardar = generar_md5(nueva_password)
+
+                            if valido:
+                                with get_db_connection() as conn:
+                                    with conn.cursor() as c:
+                                        c.execute("UPDATE usuarios SET nombre=%s, correo=%s, password=%s WHERE matricula=%s",
+                                                  (nuevo_nombre.strip(), nuevo_correo.strip(), password_guardar, st.session_state['usuario_actual']))
+                                        conn.commit()
+                                st.session_state['nombre'] = nuevo_nombre.strip()
+                                st.success("Datos personales actualizados correctamente.")
+                                time.sleep(0.5)
+                                st.rerun()
+            else:
+                st.warning("No se encontraron datos del usuario actual.")
+        except mysql.connector.Error as err:
+            st.error(f"Error al cargar o guardar datos personales: {err}")
+
     def colorear_filas(row):
         if row['Resultado IA'] == '⚠️ RIESGO':
             return ['background-color: #ffcccc; color: #900000'] * len(row)
@@ -1026,6 +1077,11 @@ else:
                     
                     with col_c1:
                         with st.expander("➕ Registrar Nuevo Usuario", expanded=False):
+                            if 'admin' in st.session_state['rol_actual']:
+                                al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrative"], key="alta_rol_usuario", format_func=lambda rol: {"alumno": "Alumno", "docente": "Docente", "administrative": "Administrador"}.get(rol, rol))
+                            else:
+                                al_rol = "alumno"
+
                             with st.form("form_alta_global"):
                                 label_u = "Matrícula / Usuario" if 'admin' in st.session_state['rol_actual'] else "Matrícula del Alumno"
                                 al_matricula = st.text_input(label_u).strip()
@@ -1033,16 +1089,11 @@ else:
                                 al_correo = st.text_input("Correo Electrónico")
                                 al_password = st.text_input("Contraseña por Defecto", value="Temporal123*")
                                 
-                                if 'admin' in st.session_state['rol_actual']:
-                                    al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrative"])
-                                    if al_rol == "alumno":
-                                        doc_asig = st.selectbox("Docente Tutor", list(dict_docentes.keys()))
-                                        al_docente_id = dict_docentes[doc_asig]
-                                    else:
-                                        al_docente_id = None
+                                if al_rol == "alumno":
+                                    doc_asig = st.selectbox("Docente Tutor", list(dict_docentes.keys()))
+                                    al_docente_id = dict_docentes[doc_asig]
                                 else:
-                                    al_rol = "alumno"
-                                    al_docente_id = st.session_state['usuario_actual']
+                                    al_docente_id = None
                                     
                                 if st.form_submit_button("Guardar Usuario", type="primary", use_container_width=True):
                                     if not al_matricula or not al_nombre:
@@ -1081,7 +1132,7 @@ else:
                                         if str(datos_originales[0]).lower() == "admin":
                                             roles_disp = ["administrative"]
                                         idx_r = roles_disp.index(datos_originales[2]) if datos_originales[2] in roles_disp else 0
-                                        edit_rol = st.selectbox("Modificar Rol", roles_disp, index=idx_r)
+                                        edit_rol = st.selectbox("Modificar Rol", roles_disp, index=idx_r, format_func=lambda rol: {"alumno": "Alumno", "docente": "Docente", "administrative": "Administrador"}.get(rol, rol))
                                         
                                         if edit_rol == "alumno":
                                             idx_d = 0
