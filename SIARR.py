@@ -188,7 +188,9 @@ def init_db():
     except mysql.connector.Error as err:
         st.error(f"Error de inicialización de Base de Datos: {err}.")
 
-init_db()
+if not st.session_state.get('db_inicializada'):
+    init_db()
+    st.session_state['db_inicializada'] = True
 
 # --- INTERFAZ DE LOGIN ---
 if st.session_state['usuario_actual'] is None:
@@ -231,7 +233,6 @@ if st.session_state['usuario_actual'] is None:
                                             st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
                                             
                                         st.success("¡Acceso concedido!")
-                                        time.sleep(0.5)
                                         st.rerun()
                                     else:
                                         st.error("Usuario o contraseña incorrectos.")
@@ -283,7 +284,6 @@ else:
                                             conn.commit()
                                     st.session_state['nombre'] = nuevo_nombre.strip()
                                     st.success("Datos personales actualizados correctamente.")
-                                    time.sleep(0.5)
                                     st.rerun()
 
                 with col_password:
@@ -311,7 +311,6 @@ else:
                                                       (generar_md5(nueva_password), st.session_state['usuario_actual']))
                                             conn.commit()
                                     st.success("Contraseña actualizada correctamente.")
-                                    time.sleep(0.5)
                                     st.rerun()
             else:
                 st.warning("No se encontraron datos del usuario actual.")
@@ -359,7 +358,6 @@ else:
                     st.session_state['df_resultados'] = None
                     st.session_state['df_crudo_entrenamiento'] = None
                     st.warning("Dataset personalizado eliminado del servidor. Se usará el archivo local por defecto.")
-                    time.sleep(0.5)
                     st.rerun()
 
         if os.path.exists("dataset_compartido_admin.xlsx") or os.path.exists("dataset_compartido_admin.csv"):
@@ -446,7 +444,7 @@ else:
                 """
                 
                 parametros_query = []
-                if st.session_state.get('rol_actual') == 'docente':
+                if rol_actual == 'docente':
                     query_completos += " AND u.docente_id = %s"
                     parametros_query.append(st.session_state['usuario_actual'])
                     
@@ -589,7 +587,8 @@ else:
         }
         orden_resultado = ["Aprobado", "Reprobado", "No Definido"]
 
-        def cargar_alumnos_sistema():
+        @st.cache_data(ttl=15, show_spinner=False)
+        def cargar_alumnos_sistema(usuario_actual, rol_actual):
             query = """
                 SELECT
                     u.matricula, u.nombre,
@@ -607,24 +606,22 @@ else:
                 WHERE u.rol = 'alumno'
             """
             parametros = []
-            if st.session_state.get('rol_actual') == 'docente':
+            if rol_actual == 'docente':
                 query += " AND u.docente_id = %s"
-                parametros.append(st.session_state['usuario_actual'])
+                parametros.append(usuario_actual)
 
             query_total = "SELECT COUNT(*) AS total FROM usuarios u WHERE u.rol = 'alumno'"
             parametros_total = []
-            if st.session_state.get('rol_actual') == 'docente':
+            if rol_actual == 'docente':
                 query_total += " AND u.docente_id = %s"
-                parametros_total.append(st.session_state['usuario_actual'])
+                parametros_total.append(usuario_actual)
 
             with get_db_connection() as conn:
                 total_registrados = pd.read_sql(query_total, conn, params=parametros_total if parametros_total else None).iloc[0]['total']
                 df_db = pd.read_sql(query, conn, params=parametros if parametros else None)
 
-            st.session_state['dash_total_registrados'] = int(total_registrados)
-
             if df_db.empty:
-                return pd.DataFrame()
+                return pd.DataFrame(), int(total_registrados)
 
             df_sistema = pd.DataFrame()
             df_sistema['Matrícula'] = df_db['matricula']
@@ -661,7 +658,7 @@ else:
                 'Aprobado',
                 'Reprobado'
             )
-            return df_sistema
+            return df_sistema, int(total_registrados)
 
         def normalizar_resultado(df_base):
             df_norm = df_base.copy()
@@ -762,11 +759,10 @@ else:
             fig.update_layout(legend_title_text="Estatus del Alumno", margin=dict(t=60, b=35, l=35, r=20))
             return fig
 
-        df_cargado = cargar_alumnos_sistema()
+        df_cargado, total_registrados = cargar_alumnos_sistema(st.session_state['usuario_actual'], st.session_state.get('rol_actual'))
         fuente = "Alumnos registrados en el sistema con cuestionario y evaluación docente"
 
         if df_cargado.empty:
-            total_registrados = st.session_state.get("dash_total_registrados", 0)
             st.metric("Alumnos registrados", f"{total_registrados:,}")
             st.warning("Aún no hay alumnos con datos completos para construir las gráficas del dashboard.")
             st.info("Para aparecer aquí, el alumno debe estar registrado, responder su cuestionario y contar con evaluación docente.")
@@ -784,7 +780,6 @@ else:
 
         st.caption(f"Fuente: {fuente}")
         m1, m2, m3, m4 = st.columns(4)
-        total_registrados = st.session_state.get("dash_total_registrados", total_alumnos)
         m1.metric("Alumnos registrados", f"{total_registrados:,}")
         m2.metric("Expedientes completos", f"{total_alumnos:,}")
         m3.metric("Aprobados", f"{aprobados:,}", f"{tasa_aprobacion:.1f}%")
@@ -817,11 +812,13 @@ else:
             ("Uso_Plataformas", "Interaccion con Plataformas de Aprendizaje", "h", False),
         ]
 
-        tab_resumen, tab_hist, tab_cat, tab_rel, tab_corr = st.tabs([
-            "Resumen", "Histogramas", "Categoricas", "Dispersion", "Correlacion"
-        ])
+        seccion_dashboard = st.radio(
+            "Vista del dashboard",
+            ["Resumen", "Histogramas", "Categoricas", "Dispersion", "Correlacion"],
+            horizontal=True
+        )
 
-        with tab_resumen:
+        if seccion_dashboard == "Resumen":
             col_a, col_b = st.columns([1, 1])
             with col_a:
                 fig_pie = px.pie(
@@ -849,7 +846,7 @@ else:
                 hide_index=True
             )
 
-        with tab_hist:
+        if seccion_dashboard == "Histogramas":
             st.subheader("Distribuciones de los alumnos registrados")
             graficas_hist = [(col, titulo, etiqueta, bins) for col, titulo, etiqueta, bins in hist_notebook if col in df.columns]
             if not graficas_hist:
@@ -866,7 +863,7 @@ else:
                         if fig:
                             st.plotly_chart(fig, use_container_width=True)
 
-        with tab_cat:
+        if seccion_dashboard == "Categoricas":
             st.subheader("Comparativas por características de los alumnos")
             graficas_cat = [(col, titulo, orientacion, porcentaje) for col, titulo, orientacion, porcentaje in cat_notebook if col in df.columns]
             if not graficas_cat:
@@ -880,7 +877,7 @@ else:
                         if fig:
                             st.plotly_chart(fig, use_container_width=True)
 
-        with tab_rel:
+        if seccion_dashboard == "Dispersion":
             st.subheader("Relaciones entre hábitos y desempeño")
             if all(col in df.columns for col in ["Horas_Estudio_Semana", "Calificacion_Ultima_Materia"]):
                 data_scatter = df.copy()
@@ -932,7 +929,7 @@ else:
                     fig.update_layout(height=430, margin=dict(t=60, b=35, l=35, r=20))
                     st.plotly_chart(fig, use_container_width=True)
 
-        with tab_corr:
+        if seccion_dashboard == "Correlacion":
             st.subheader("Matriz de Correlacion de Pearson")
             df_corr = df.copy()
             if "Sistema_Escolar" in df_corr.columns and "Sistema_Escolar_Num" not in df_corr.columns:
@@ -1134,7 +1131,6 @@ else:
                                                 conn.commit()
                                                 st.success(f"🎉 ¡Expediente de {usuario_encontrado[0]} guardado!")
                                                 st.session_state['alumno_seleccionado_evaluar'] = ""
-                                                time.sleep(0.5)
                                                 st.rerun()
                                 except mysql.connector.Error as err:
                                     st.error(f"Error al guardar evaluación: {err}")
@@ -1180,7 +1176,6 @@ else:
                                                               (al_matricula, password_hash, al_rol, al_nombre, al_correo, al_docente_id))
                                                     conn.commit()
                                             st.success("🎉 Usuario dado de alta exitosamente.")
-                                            time.sleep(0.5)
                                             st.rerun()
                                         except mysql.connector.Error as err:
                                             st.error(f"Error: {err}")
@@ -1241,7 +1236,6 @@ else:
                                                                   (edit_nombre, edit_correo, pwd_a_guardar, edit_rol, edit_docente_id, datos_originales[0]))
                                                         conn.commit()
                                                 st.success("🎉 Datos de usuario actualizados.")
-                                                time.sleep(0.5)
                                                 st.rerun()
                                             except mysql.connector.Error as err:
                                                 st.error(f"Error al actualizar: {err}")
@@ -1266,7 +1260,6 @@ else:
                                                         c.execute("DELETE FROM usuarios WHERE matricula=%s", (datos_eliminar[0],))
                                                         conn.commit()
                                                 st.success("🗑️ Registro revocado con éxito.")
-                                                time.sleep(0.5)
                                                 st.rerun()
                                             except mysql.connector.Error as err:
                                                 st.error(f"Error al eliminar: {err}")
