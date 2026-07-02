@@ -509,6 +509,7 @@ else:
                 file_name=f"Reporte_IA_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 use_container_width=True
+            )
 
                 def mostrar_dashboard_interactivo():
         import pandas as pd
