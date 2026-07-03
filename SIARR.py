@@ -10,7 +10,7 @@ import random
 import hashlib
 import re
 
-# LibrerÃ­as de IA, Formato Excel y VisualizaciÃ³n Avanzada
+# Librerías de IA, Formato Excel y Visualización Avanzada
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf 
@@ -26,7 +26,7 @@ def generar_md5(texto):
     return hashlib.md5(texto.encode('utf-8')).hexdigest()
 
 def validar_password_moodle(password):
-    """Valida: min 8 caracteres, 1 mayÃºscula, 1 minÃºscula, 1 nÃºmero, 1 carÃ¡cter especial"""
+    """Valida: min 8 caracteres, 1 mayúscula, 1 minúscula, 1 número, 1 carácter especial"""
     if len(password) < 8: return False
     if not re.search(r"\d", password): return False
     if not re.search(r"[a-z]", password): return False
@@ -34,13 +34,13 @@ def validar_password_moodle(password):
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password): return False
     return True
 
-# --- CONFIGURACIÃ“N DE LA PÃGINA ---
-st.set_page_config(page_title="SIARR", page_icon="ðŸŽ“", layout="wide")
+# --- CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
 <style>
-/* Ocultar menÃº y marca de agua de Streamlit */
+/* Ocultar menú y marca de agua de Streamlit */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
@@ -53,7 +53,7 @@ div[data-testid="stDeployButton"] {
     height: 0 !important;
 }
 
-/* ðŸ’» DiseÃ±o para Computadora (Pantallas grandes) */
+/* 💻 Diseño para Computadora (Pantallas grandes) */
 .block-container {
     padding-top: 2rem !important;
     padding-bottom: 2rem !important;
@@ -62,7 +62,7 @@ div[data-testid="stDeployButton"] {
     max-width: 100% !important;
 }
 
-/* ðŸ“± DiseÃ±o EspecÃ­fico para Celulares */
+/* 📱 Diseño Específico para Celulares */
 @media (max-width: 768px) {
     .block-container {
         padding-top: 1rem !important;
@@ -127,10 +127,10 @@ class StreamlitLogger(Callback):
         self.placeholder = placeholder
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        msg = f"ðŸ§  Entrenando Red Neuronal... Ã‰poca {epoch+1}/20 | PrecisiÃ³n: {logs.get('accuracy', 0):.2%}"
+        msg = f"🧠 Entrenando Red Neuronal... Época {epoch+1}/20 | Precisión: {logs.get('accuracy', 0):.2%}"
         self.placeholder.info(msg)
 
-# --- FUNCIÃ“N DE CONEXIÃ“N A BASE DE DATOS ---
+# --- FUNCIÓN DE CONEXIÓN A BASE DE DATOS ---
 def get_db_connection():
     if "DB_HOST" in st.secrets:
         return mysql.connector.connect(
@@ -176,8 +176,8 @@ def init_db():
                 if c.fetchone()[0] == 0:
                     pwd_default = generar_md5('Temporal123*')
                     usuarios_prueba = [
-                        ('admin', pwd_default, 'administrative', 'CoordinaciÃ³n General', 'admin@itsperote.edu.mx', None),
-                        ('profe_juan', pwd_default, 'docente', 'Ing. Juan PÃ©rez', 'juan@itsperote.edu.mx', None),
+                        ('admin', pwd_default, 'administrative', 'Coordinación General', 'admin@itsperote.edu.mx', None),
+                        ('profe_juan', pwd_default, 'docente', 'Ing. Juan Pérez', 'juan@itsperote.edu.mx', None),
                         ('21050002', pwd_default, 'alumno', 'Miguel Angel Sanchez', 'angel@gmail.com', 'profe_juan'),
                         ('21050003', pwd_default, 'alumno', 'Luz Rueda Tereso', 'rueda@gmail.com', 'profe_juan'),
                         ('21050009', pwd_default, 'alumno', 'Miguel Angel Sanchez', 'angel@gmail.com', 'profe_juan')
@@ -202,7 +202,7 @@ def init_db():
                             FOREIGN KEY (matricula) REFERENCES usuarios(matricula) ON DELETE CASCADE)''')
                 conn.commit()
     except mysql.connector.Error as err:
-        st.error(f"Error de inicializaciÃ³n de Base de Datos: {err}.")
+        st.error(f"Error de inicialización de Base de Datos: {err}.")
 
 if not st.session_state.get('db_inicializada'):
     init_db()
@@ -215,17 +215,17 @@ if st.session_state['usuario_actual'] is None:
     
     with col2:
         with st.container(border=True):
-            st.markdown("<h1 style='text-align: center;'>ðŸŽ“ Acceso al Sistema</h1>", unsafe_allow_html=True)
+            st.markdown("<h1 style='text-align: center;'>🎓 Acceso al Sistema</h1>", unsafe_allow_html=True)
             st.write("---")
             
             with st.form("formulario_acceso"):
-                usuario = st.text_input("Usuario / MatrÃ­cula")
-                password = st.text_input("ContraseÃ±a", type="password")
-                boton_ingresar = st.form_submit_button("Iniciar SesiÃ³n", type="primary", width="stretch")
+                usuario = st.text_input("Usuario / Matrícula")
+                password = st.text_input("Contraseña", type="password")
+                boton_ingresar = st.form_submit_button("Iniciar Sesión", type="primary", width="stretch")
 
                 if boton_ingresar:
                     if not usuario or not password:
-                        st.error("Introduce tu usuario y contraseÃ±a.")
+                        st.error("Introduce tu usuario y contraseña.")
                     else:
                         try:
                             password_cifrado = generar_md5(password)
@@ -244,24 +244,24 @@ if st.session_state['usuario_actual'] is None:
                                         st.session_state['nombre'] = resultado[3]
                                         
                                         if 'admin' in rol_bd:
-                                            st.session_state['tab_actual'] = "ðŸ‘¥ GestiÃ³n de Usuarios (CRUD)"
+                                            st.session_state['tab_actual'] = "👥 Gestión de Usuarios (CRUD)"
                                         else:
-                                            st.session_state['tab_actual'] = "ðŸ“ Carga la informaciÃ³n del Alumno"
+                                            st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
                                             
-                                        st.success("Â¡Acceso concedido!")
+                                        st.success("¡Acceso concedido!")
                                         st.rerun()
                                     else:
-                                        st.error("Usuario o contraseÃ±a incorrectos.")
+                                        st.error("Usuario o contraseña incorrectos.")
                         except mysql.connector.Error as err:
                             st.error(f"Error en la consulta: {err}")
 
 else:
-    # --- MENÃš SUPERIOR DE CIERRE DE SESIÃ“N ---
+    # --- MENÚ SUPERIOR DE CIERRE DE SESIÓN ---
     col_usr, col_btn = st.columns([8, 2])
     with col_usr:
         st.markdown(f"**Usuario conectado:** {st.session_state['nombre']} ({st.session_state['rol_actual'].upper()})")
     with col_btn:
-        if st.button("âŒ Cerrar SesiÃ³n", type="secondary", width="stretch"):
+        if st.button("❌ Cerrar Sesión", type="secondary", width="stretch"):
             st.session_state['usuario_actual'] = None
             st.session_state['rol_actual'] = None
             st.session_state['nombre'] = ""
@@ -271,7 +271,7 @@ else:
             st.session_state['dash_semestre'] = None
             st.rerun()
 
-    with st.expander("ðŸ‘¤ Datos personales", expanded=False):
+    with st.expander("👤 Datos personales", expanded=False):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as c:
@@ -283,15 +283,15 @@ else:
 
                 with col_perfil:
                     with st.container(border=True):
-                        st.markdown("### ðŸ‘¤ Datos personales")
+                        st.markdown("### 👤 Datos personales")
                         st.caption("Actualiza tu nombre y correo institucional.")
                         with st.form("form_datos_personales"):
                             nuevo_nombre = st.text_input("Nombre completo", value=perfil_actual[0] or "")
-                            nuevo_correo = st.text_input("Correo electrÃ³nico", value=perfil_actual[1] or "")
+                            nuevo_correo = st.text_input("Correo electrónico", value=perfil_actual[1] or "")
 
-                            if st.form_submit_button("ðŸ’¾ Guardar datos", type="primary", width="stretch"):
+                            if st.form_submit_button("💾 Guardar datos", type="primary", width="stretch"):
                                 if not nuevo_nombre.strip():
-                                    st.error("El nombre no puede estar vacÃ­o.")
+                                    st.error("El nombre no puede estar vacío.")
                                 else:
                                     with get_db_connection() as conn:
                                         with conn.cursor() as c:
@@ -304,29 +304,29 @@ else:
 
                 with col_password:
                     with st.container(border=True):
-                        st.markdown("### ðŸ” Cambiar ContraseÃ±a de Acceso")
-                        st.caption("Modifica tu clave periÃ³dicamente para mantener protegidos los archivos y folios de tus proyectos de investigaciÃ³n.")
+                        st.markdown("### 🔐 Cambiar Contraseña de Acceso")
+                        st.caption("Modifica tu clave periódicamente para mantener protegidos los archivos y folios de tus proyectos de investigación.")
                         with st.form("form_cambiar_password"):
-                            password_actual = st.text_input("ContraseÃ±a Actual", type="password", placeholder="Ingresa tu contraseÃ±a actual")
-                            nueva_password = st.text_input("Nueva ContraseÃ±a", type="password", placeholder="MÃ­nimo 8 caracteres")
-                            confirmar_password = st.text_input("Confirmar Nueva ContraseÃ±a", type="password", placeholder="Repite la nueva contraseÃ±a")
+                            password_actual = st.text_input("Contraseña Actual", type="password", placeholder="Ingresa tu contraseña actual")
+                            nueva_password = st.text_input("Nueva Contraseña", type="password", placeholder="Mínimo 8 caracteres")
+                            confirmar_password = st.text_input("Confirmar Nueva Contraseña", type="password", placeholder="Repite la nueva contraseña")
 
-                            if st.form_submit_button("ðŸ”‘ ACTUALIZAR CONTRASEÃ‘A", type="primary", width="stretch"):
+                            if st.form_submit_button("🔑 ACTUALIZAR CONTRASEÑA", type="primary", width="stretch"):
                                 if not password_actual or not nueva_password or not confirmar_password:
-                                    st.error("Completa los tres campos de contraseÃ±a.")
+                                    st.error("Completa los tres campos de contraseña.")
                                 elif generar_md5(password_actual) != perfil_actual[2]:
-                                    st.error("La contraseÃ±a actual no es correcta.")
+                                    st.error("La contraseña actual no es correcta.")
                                 elif nueva_password != confirmar_password:
-                                    st.error("La nueva contraseÃ±a y la confirmaciÃ³n no coinciden.")
+                                    st.error("La nueva contraseña y la confirmación no coinciden.")
                                 elif not validar_password_moodle(nueva_password):
-                                    st.error("La nueva contraseÃ±a debe tener al menos 8 caracteres, 1 mayÃºscula, 1 minÃºscula, 1 nÃºmero y 1 carÃ¡cter especial.")
+                                    st.error("La nueva contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.")
                                 else:
                                     with get_db_connection() as conn:
                                         with conn.cursor() as c:
                                             c.execute("UPDATE usuarios SET password=%s WHERE matricula=%s",
                                                       (generar_md5(nueva_password), st.session_state['usuario_actual']))
                                             conn.commit()
-                                    st.success("ContraseÃ±a actualizada correctamente.")
+                                    st.success("Contraseña actualizada correctamente.")
                                     st.rerun()
             else:
                 st.warning("No se encontraron datos del usuario actual.")
@@ -334,22 +334,22 @@ else:
             st.error(f"Error al cargar o guardar datos personales: {err}")
 
     def colorear_filas(row):
-        if row['Resultado IA'] == 'âš ï¸ RIESGO':
+        if row['Resultado IA'] == '⚠️ RIESGO':
             return ['background-color: #ffcccc; color: #900000'] * len(row)
-        elif row['Resultado IA'] == 'âœ… ESTABLE':
+        elif row['Resultado IA'] == '✅ ESTABLE':
             return ['background-color: #e6ffe6; color: #006600'] * len(row)
         return [''] * len(row)
 
-    # --- MÃ“DULO DE IA ---
+    # --- MÓDULO DE IA ---
     def mostrar_modulo_ia():
-        st.markdown("### ðŸ§  Inteligencia Artificial con Aprendizaje Profundo")
-        st.write("DetecciÃ³n de riesgo de reprobaciÃ³n en asignaturas de programaciÃ³n mediante anÃ¡lisis de desempeÃ±o predictivo.")
+        st.markdown("### 🧠 Inteligencia Artificial con Aprendizaje Profundo")
+        st.write("Detección de riesgo de reprobación en asignaturas de programación mediante análisis de desempeño predictivo.")
         
         if 'admin' in st.session_state['rol_actual']:
-            st.markdown("#### ðŸ“‚ ConfiguraciÃ³n del Dataset de Entrenamiento")
+            st.markdown("#### 📂 Configuración del Dataset de Entrenamiento")
             col_da1, col_da2 = st.columns([2, 1])
             with col_da1:
-                archivo_cargado = st.file_uploader("Agregar un nuevo dataset para el anÃ¡lisis (.csv, .xlsx)", type=["csv", "xlsx"], key="file_uploader_ia")
+                archivo_cargado = st.file_uploader("Agregar un nuevo dataset para el análisis (.csv, .xlsx)", type=["csv", "xlsx"], key="file_uploader_ia")
                 if archivo_cargado is not None:
                     try:
                         ext = ".xlsx" if archivo_cargado.name.endswith('.xlsx') else ".csv"
@@ -361,29 +361,29 @@ else:
                         with open(nombre_archivo_compartido, "wb") as f:
                             f.write(archivo_cargado.getbuffer())
                             
-                        st.success(f"âœ… Dataset guardado globalmente en el servidor: {archivo_cargado.name}")
+                        st.success(f"✅ Dataset guardado globalmente en el servidor: {archivo_cargado.name}")
                     except Exception as e:
                         st.error(f"Error al escribir el archivo compartido: {e}")
             with col_da2:
                 st.write("")
                 st.write("")
-                if st.button("ðŸ—‘ï¸ Borrar Dataset de AnÃ¡lisis", type="secondary", width="stretch"):
+                if st.button("🗑️ Borrar Dataset de Análisis", type="secondary", width="stretch"):
                     if os.path.exists("dataset_compartido_admin.xlsx"): os.remove("dataset_compartido_admin.xlsx")
                     if os.path.exists("dataset_compartido_admin.csv"): os.remove("dataset_compartido_admin.csv")
                     st.session_state['analisis_completado'] = False
                     st.session_state['df_resultados'] = None
                     st.session_state['df_crudo_entrenamiento'] = None
-                    st.warning("Dataset personalizado eliminado del servidor. Se usarÃ¡ el archivo local por defecto.")
+                    st.warning("Dataset personalizado eliminado del servidor. Se usará el archivo local por defecto.")
                     st.rerun()
 
         if os.path.exists("dataset_compartido_admin.xlsx") or os.path.exists("dataset_compartido_admin.csv"):
-            st.info("â„¹ï¸ Actualmente utilizando el dataset compartido cargado por el Administrador.")
+            st.info("ℹ️ Actualmente utilizando el dataset compartido cargado por el Administrador.")
         else:
-            st.info("â„¹ï¸ Utilizando el dataset histÃ³rico predeterminado del sistema institucional.")
+            st.info("ℹ️ Utilizando el dataset histórico predeterminado del sistema institucional.")
             
-        if st.button("ðŸš€ Iniciar AnÃ¡lisis de Red Neuronal", type="primary", width="stretch"):
+        if st.button("🚀 Iniciar Análisis de Red Neuronal", type="primary", width="stretch"):
             consola_placeholder = st.empty()
-            consola_placeholder.info("Buscando y cargando archivo de base de datos histÃ³rico...")
+            consola_placeholder.info("Buscando y cargando archivo de base de datos histórico...")
             
             try:
                 os.environ['PYTHONHASHSEED'] = '42'
@@ -403,13 +403,13 @@ else:
                     elif os.path.exists(archivo_excel):
                         df = pd.read_excel(archivo_excel)
                     else:
-                        st.error("âŒ Error: No se encontrÃ³ ningÃºn archivo de base de datos histÃ³rico en el servidor.")
+                        st.error("❌ Error: No se encontró ningún archivo de base de datos histórico en el servidor.")
                         return
 
                 # Guardamos copia original para extraer info rica en el Dashboard
                 st.session_state['df_crudo_entrenamiento'] = df.copy()
 
-                cols_ignorar = ['MatrÃ­cula', 'Matricula', 'matricula', 'Nombre', 'Nombre_completo', 'ID', 'Id']
+                cols_ignorar = ['Matrícula', 'Matricula', 'matricula', 'Nombre', 'Nombre_completo', 'ID', 'Id']
                 df = df.drop(columns=[c for c in cols_ignorar if c in df.columns], errors='ignore')
                 
                 if 'Resultado' in df.columns:
@@ -442,7 +442,7 @@ else:
                 
                 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
                 model.fit(X_train_scaled, y_train, epochs=20, shuffle=False, callbacks=[StreamlitLogger(consola_placeholder)], verbose=0)
-                consola_placeholder.success("âœ… Red neuronal entrenada con Ã©xito.")
+                consola_placeholder.success("✅ Red neuronal entrenada con éxito.")
                 
                 query_completos = """
                 SELECT 
@@ -460,7 +460,7 @@ else:
                 """
                 
                 parametros_query = []
-                if st.session_state['rol_actual'] == 'docente':
+                if rol_actual == 'docente':
                     query_completos += " AND u.docente_id = %s"
                     parametros_query.append(st.session_state['usuario_actual'])
                     
@@ -468,11 +468,11 @@ else:
                     df_db = pd.read_sql(query_completos, conn, params=parametros_query if parametros_query else None)
                     
                 if df_db.empty:
-                    st.warning("âš ï¸ No hay alumnos con expedientes completos (deben responder el cuestionario y ser evaluados).")
+                    st.warning("⚠️ No hay alumnos con expedientes completos (deben responder el cuestionario y ser evaluados).")
                     st.session_state['analisis_completado'] = False
                 else:
                     df_db_prep = pd.DataFrame()
-                    df_db_prep['MatrÃ­cula'] = df_db['matricula']
+                    df_db_prep['Matrícula'] = df_db['matricula']
                     df_db_prep['Nombre_completo'] = df_db['nombre']
                     df_db_prep['Docente_Tutor'] = df_db['maestro_responsable'].fillna("Sin Asignar")
                     df_db_prep['Semestre'] = df_db['semestre']
@@ -494,8 +494,8 @@ else:
                     df_db_prep['Confianza_Aprobar'] = df_db['confianza']
                     df_db_prep['Dificultad_Materia'] = df_db['dificultad']
                     df_db_prep['Nivel_Estres'] = df_db['estres']
-                    df_db_prep['Computadora_Propia'] = df_db['computadora'].map({'SÃ­': 1, 'No': 0}).fillna(0)
-                    df_db_prep['Internet_Casa'] = df_db['internet'].map({'SÃ­': 1, 'No': 0}).fillna(0)
+                    df_db_prep['Computadora_Propia'] = df_db['computadora'].map({'Sí': 1, 'No': 0}).fillna(0)
+                    df_db_prep['Internet_Casa'] = df_db['internet'].map({'Sí': 1, 'No': 0}).fillna(0)
                     df_db_prep['Calidad_Internet'] = df_db['calidad_internet']
                     
                     X_custom = df_db_prep.reindex(columns=nombres_variables, fill_value=0)
@@ -508,16 +508,16 @@ else:
                         prob_num = prob[0]
                         
                         if prob_num >= 0.70:
-                            nivel = "ðŸ”´ Alto"
-                            estado = "âš ï¸ RIESGO"
+                            nivel = "🔴 Alto"
+                            estado = "⚠️ RIESGO"
                         elif prob_num >= 0.40:
-                            nivel = "ðŸŸ¡ Medio"
-                            estado = "âš ï¸ RIESGO"
+                            nivel = "🟡 Medio"
+                            estado = "⚠️ RIESGO"
                         else:
-                            nivel = "ðŸŸ¢ Bajo"
-                            estado = "âœ… ESTABLE"
+                            nivel = "🟢 Bajo"
+                            estado = "✅ ESTABLE"
                             
-                        if estado == "âš ï¸ RIESGO":
+                        if estado == "⚠️ RIESGO":
                             impacto_variables = X_custom_scaled[i] * correlaciones
                             impacto_dict = {nombres_variables[j]: impacto_variables[j] for j in range(len(nombres_variables))}
                             top_3 = sorted(impacto_dict.items(), key=lambda x: x[1], reverse=True)[:3]
@@ -528,7 +528,7 @@ else:
                             
                         # Guardamos info valiosa para el Dashboard
                         resultados_custom.append({
-                            "MatrÃ­cula": fila.get('MatrÃ­cula'),
+                            "Matrícula": fila.get('Matrícula'),
                             "Nombre": fila.get('Nombre_completo'),
                             "Docente Asignado": fila.get('Docente_Tutor'),
                             "Semestre": fila.get('Semestre'),
@@ -540,16 +540,16 @@ else:
                             "Resultado IA": estado,
                             "Nivel de Riesgo": nivel,
                             "Prob. Exacta (%)": f"{prob_num * 100:.2f}%",
-                            "Factores CrÃ­ticos": motivos_str
+                            "Factores Críticos": motivos_str
                         })
                         
                     df_resultados = pd.DataFrame(resultados_custom)
                     
                     buffer = io.BytesIO()
                     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                        df_resultados.to_excel(writer, index=False, sheet_name='DiagnÃ³stico')
+                        df_resultados.to_excel(writer, index=False, sheet_name='Diagnóstico')
                         workbook = writer.book
-                        worksheet = writer.sheets['DiagnÃ³stico']
+                        worksheet = writer.sheets['Diagnóstico']
                         
                         fill_riesgo = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
                         fill_estable = PatternFill(start_color="E6FFE6", end_color="E6FFE6", fill_type="solid")
@@ -558,7 +558,7 @@ else:
                             idx_col_resultado = df_resultados.columns.get_loc("Resultado IA") + 1
                             for r_num in range(2, len(df_resultados) + 2):
                                 cell_val = worksheet.cell(row=r_num, column=idx_col_resultado).value
-                                current_fill = fill_riesgo if cell_val == "âš ï¸ RIESGO" else fill_estable if cell_val == "âœ… ESTABLE" else None
+                                current_fill = fill_riesgo if cell_val == "⚠️ RIESGO" else fill_estable if cell_val == "✅ ESTABLE" else None
                                 if current_fill:
                                     for c_num in range(1, len(df_resultados.columns) + 1):
                                         worksheet.cell(row=r_num, column=c_num).fill = current_fill
@@ -569,22 +569,22 @@ else:
                     st.session_state['excel_data'] = buffer.getvalue()
                     st.session_state['analisis_completado'] = True
             except Exception as e:
-                st.error(f"âŒ ERROR DETECTADO: {str(e)}")
+                st.error(f"❌ ERROR DETECTADO: {str(e)}")
                 traceback.print_exc()
                 st.session_state['analisis_completado'] = False
 
         if st.session_state['analisis_completado'] and st.session_state['df_resultados'] is not None:
             st.markdown("---")
-            st.subheader("ðŸ“‹ DiagnÃ³stico de Alumnos Activos")
+            st.subheader("📋 Diagnóstico de Alumnos Activos")
             
-            cols_vista = ['MatrÃ­cula', 'Nombre', 'Semestre', 'Resultado IA', 'Nivel de Riesgo', 'Prob. Exacta (%)', 'Factores CrÃ­ticos']
+            cols_vista = ['Matrícula', 'Nombre', 'Semestre', 'Resultado IA', 'Nivel de Riesgo', 'Prob. Exacta (%)', 'Factores Críticos']
             df_vista_rapida = st.session_state['df_resultados'][cols_vista]
             
             df_estilado = df_vista_rapida.style.apply(colorear_filas, axis=1)
             st.dataframe(df_estilado, width="stretch")
             
             st.download_button(
-                label="ðŸ“¥ Descargar Reporte de DiagnÃ³stico (Excel)",
+                label="📥 Descargar Reporte de Diagnóstico (Excel)",
                 data=st.session_state['excel_data'],
                 file_name=f"Reporte_IA_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -640,7 +640,7 @@ else:
                 return pd.DataFrame(), int(total_registrados)
 
             df_sistema = pd.DataFrame()
-            df_sistema['MatrÃ­cula'] = df_db['matricula']
+            df_sistema['Matrícula'] = df_db['matricula']
             df_sistema['Nombre'] = df_db['nombre']
             df_sistema['Docente_Tutor'] = df_db['docente_tutor'].fillna('Sin asignar')
             df_sistema['Semestre'] = df_db['semestre']
@@ -664,9 +664,9 @@ else:
             df_sistema['Dificultad_Materia'] = df_db['dificultad']
             df_sistema['Nivel_Estres'] = df_db['estres']
             df_sistema['Computadora_Propia'] = df_db['computadora']
-            df_sistema['Computadora_Propia_Num'] = df_db['computadora'].map({'SÃ­': 1, 'No': 0, 'SÃƒÂ­': 1}).fillna(0)
+            df_sistema['Computadora_Propia_Num'] = df_db['computadora'].map({'Sí': 1, 'Si': 1, 'No': 0}).fillna(0)
             df_sistema['Internet_Casa'] = df_db['internet']
-            df_sistema['Internet_Casa_Num'] = df_db['internet'].map({'SÃ­': 1, 'No': 0, 'SÃƒÂ­': 1}).fillna(0)
+            df_sistema['Internet_Casa_Num'] = df_db['internet'].map({'Sí': 1, 'Si': 1, 'No': 0}).fillna(0)
             df_sistema['Calidad_Internet'] = df_db['calidad_internet']
             df_sistema['Resultado_Academico'] = np.where(
                 (pd.to_numeric(df_sistema['Promedio_General'], errors='coerce') >= 70) &
@@ -682,20 +682,20 @@ else:
             fuente_dash = "Alumnos registrados en el sistema con cuestionario y evaluacion docente"
 
             df_ia = st.session_state.get('df_resultados')
-            columnas_ia = {"MatrÃ­cula", "Resultado IA"}
+            columnas_ia = {"Matrícula", "Resultado IA"}
             if df_ia is None or df_ia.empty or not columnas_ia.issubset(set(df_ia.columns)):
                 return df_dash, fuente_dash
 
-            columnas_merge = ["MatrÃ­cula", "Resultado IA"]
-            for col in ["Nivel de Riesgo", "Prob. Exacta (%)", "Factores CrÃ­ticos"]:
+            columnas_merge = ["Matrícula", "Resultado IA"]
+            for col in ["Nivel de Riesgo", "Prob. Exacta (%)", "Factores Críticos"]:
                 if col in df_ia.columns:
                     columnas_merge.append(col)
 
             df_ia_merge = df_ia[columnas_merge].copy()
-            df_dash["_matricula_key"] = df_dash["MatrÃ­cula"].astype(str).str.strip()
-            df_ia_merge["_matricula_key"] = df_ia_merge["MatrÃ­cula"].astype(str).str.strip()
+            df_dash["_matricula_key"] = df_dash["Matrícula"].astype(str).str.strip()
+            df_ia_merge["_matricula_key"] = df_ia_merge["Matrícula"].astype(str).str.strip()
             df_dash = df_dash.merge(
-                df_ia_merge.drop(columns=["MatrÃ­cula"]),
+                df_ia_merge.drop(columns=["Matrícula"]),
                 on="_matricula_key",
                 how="left"
             ).drop(columns=["_matricula_key"])
@@ -811,8 +811,8 @@ else:
 
         if df_cargado.empty:
             st.metric("Alumnos registrados", f"{total_registrados:,}")
-            st.warning("AÃºn no hay alumnos con datos completos para construir las grÃ¡ficas del dashboard.")
-            st.info("Para aparecer aquÃ­, el alumno debe estar registrado, responder su cuestionario y contar con evaluaciÃ³n docente.")
+            st.warning("Aún no hay alumnos con datos completos para construir las gráficas del dashboard.")
+            st.info("Para aparecer aquí, el alumno debe estar registrado, responder su cuestionario y contar con evaluación docente.")
             return
 
         df_cargado, fuente = aplicar_diagnostico_ia(df_cargado)
@@ -912,7 +912,7 @@ else:
                             st.plotly_chart(fig, width="stretch")
 
         if seccion_dashboard == "Categoricas":
-            st.subheader("Comparativas por caracterÃ­sticas de los alumnos")
+            st.subheader("Comparativas por características de los alumnos")
             graficas_cat = [(col, titulo, orientacion, porcentaje) for col, titulo, orientacion, porcentaje in cat_notebook if col in df.columns]
             if not graficas_cat:
                 st.warning("No se encontraron columnas compatibles para las graficas categoricas.")
@@ -926,7 +926,7 @@ else:
                             st.plotly_chart(fig, width="stretch")
 
         if seccion_dashboard == "Dispersion":
-            st.subheader("Relaciones entre hÃ¡bitos y desempeÃ±o")
+            st.subheader("Relaciones entre hábitos y desempeño")
             if all(col in df.columns for col in ["Horas_Estudio_Semana", "Calificacion_Ultima_Materia"]):
                 data_scatter = df.copy()
                 data_scatter["Horas_Estudio_Semana"] = pd.to_numeric(data_scatter["Horas_Estudio_Semana"], errors="coerce")
@@ -1030,30 +1030,30 @@ else:
         col1, col2 = st.columns([2.2, 0.8])
         with col1:
             with st.container(border=True):
-                st.markdown(f"<h1>ðŸ‘¨â€ðŸŽ“ Hola, {st.session_state['nombre']}</h1>", unsafe_allow_html=True)
+                st.markdown(f"<h1>👨‍🎓 Hola, {st.session_state['nombre']}</h1>", unsafe_allow_html=True)
                 st.write("---")
-                st.subheader("ðŸ“‹ Cuestionario de HÃ¡bitos y Contexto Estudiantil")
+                st.subheader("📋 Cuestionario de Hábitos y Contexto Estudiantil")
                 
                 with st.form(f"form_alumno_{st.session_state['form_alumno_version']}"):
-                    sexo = st.selectbox("Sexo", ["Hombre", "Mujer"], index=None, placeholder="Selecciona una opciÃ³n...")
+                    sexo = st.selectbox("Sexo", ["Hombre", "Mujer"], index=None, placeholder="Selecciona una opción...")
                     semestre = st.number_input("Semestre actual", min_value=1, max_value=12, value=None, placeholder="Ej. 1")
-                    sistema = st.selectbox("Sistema Escolar", ["Escolarizado", "Semiescolarizado"], index=None, placeholder="Selecciona una opciÃ³n...")
+                    sistema = st.selectbox("Sistema Escolar", ["Escolarizado", "Semiescolarizado"], index=None, placeholder="Selecciona una opción...")
                     
                     horas_estudio = st.number_input("Horas de Estudio a la Semana", min_value=0, max_value=168, value=None, placeholder="Ej. 5")
-                    dias_estudio = st.selectbox("DÃ­as de Estudio a la Semana", [0, 1, 2, 3, 4, 5, 6, 7], index=None, placeholder="Selecciona una opciÃ³n...")
+                    dias_estudio = st.selectbox("Días de Estudio a la Semana", [0, 1, 2, 3, 4, 5, 6, 7], index=None, placeholder="Selecciona una opción...")
                     
-                    motivacion = st.selectbox("MotivaciÃ³n (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opciÃ³n...")
-                    confianza = st.selectbox("Confianza en Aprobar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opciÃ³n...")
-                    dificultad = st.selectbox("Dificultad (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opciÃ³n...")
-                    apoyo = st.selectbox("Apoyo Familiar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opciÃ³n...")
-                    estres = st.selectbox("Nivel de EstrÃ©s (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opciÃ³n...")
-                    computadora = st.selectbox("Â¿Computadora Propia?", ["SÃ­", "No"], index=None, placeholder="Selecciona una opciÃ³n...")
-                    internet = st.radio("Â¿Internet en Casa?", ["SÃ­", "No"], index=None)
-                    calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opciÃ³n...")
+                    motivacion = st.selectbox("Motivación (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
+                    confianza = st.selectbox("Confianza en Aprobar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
+                    dificultad = st.selectbox("Dificultad (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
+                    apoyo = st.selectbox("Apoyo Familiar (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
+                    estres = st.selectbox("Nivel de Estrés (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
+                    computadora = st.selectbox("¿Computadora Propia?", ["Sí", "No"], index=None, placeholder="Selecciona una opción...")
+                    internet = st.radio("¿Internet en Casa?", ["Sí", "No"], index=None)
+                    calidad_internet = st.selectbox("Calidad de Internet (1 a 5)", [1, 2, 3, 4, 5], index=None, placeholder="Selecciona una opción...")
                     
                     if st.form_submit_button("Guardar Respuestas", type="primary", width="stretch"):
                         if any(v is None for v in [sexo, semestre, sistema, horas_estudio, dias_estudio, motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet]):
-                            st.error("âŒ Todos los campos son obligatorios. Por favor, responde el cuestionario por completo antes de guardar.")
+                            st.error("❌ Todos los campos son obligatorios. Por favor, responde el cuestionario por completo antes de guardar.")
                         else:
                             try:
                                 with get_db_connection() as conn:
@@ -1065,18 +1065,18 @@ else:
                                         c.execute(consulta, (st.session_state['usuario_actual'], sexo, semestre, sistema, horas_estudio, dias_estudio, 
                                                              motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet))
                                         conn.commit()
-                                st.success("Ã°Å¸Å½â€° Ã‚Â¡Tus respuestas han sido guardadas con ÃƒÂ©xito!")
+                                st.success("ðÅ¸Å½‰ Â¡Tus respuestas han sido guardadas con Ã©xito!")
                                 st.session_state['form_alumno_version'] += 1
                                 st.rerun()
                             except mysql.connector.Error as err:
                                 st.error(f"Error al guardar cuestionario: {err}")
         with col2:
             with st.container(border=True):
-                st.markdown("### â„¹ï¸ InformaciÃ³n de tu Perfil")
-                st.info(f"**MatrÃ­cula:**\n{st.session_state['usuario_actual']}")
+                st.markdown("### ℹ️ Información de tu Perfil")
+                st.info(f"**Matrícula:**\n{st.session_state['usuario_actual']}")
                 st.info(f"**Rol Asignado:**\nAlumno")
                 st.write("---")
-                st.write("AsegÃºrate de responder de manera honesta para que el algoritmo de IA pueda estimar tu estatus de riesgo con precisiÃ³n.")
+                st.write("Asegúrate de responder de manera honesta para que el algoritmo de IA pueda estimar tu estatus de riesgo con precisión.")
 
     # --- PANTALLA: DOCENTE / ADMINISTRATIVO ---
     def pantalla_docente():
@@ -1120,13 +1120,13 @@ else:
 
         with col1:
             with st.container(border=True):
-                st.markdown(f"<h1>ðŸ‘¨â€ðŸ« Panel del Personal AcadÃ©mico</h1>", unsafe_allow_html=True)
+                st.markdown(f"<h1>👨‍🏫 Panel del Personal Académico</h1>", unsafe_allow_html=True)
                 st.write("---")
                 
-                # MenÃº de Tabs
-                opciones_tabs = ["ðŸ‘¥ GestiÃ³n de Usuarios (CRUD)", "ðŸš€ Ejecutar DiagnÃ³stico", "ðŸ“Š Dashboard Interactivo"]
+                # Menú de Tabs
+                opciones_tabs = ["👥 Gestión de Usuarios (CRUD)", "🚀 Ejecutar Diagnóstico", "📊 Dashboard Interactivo"]
                 if st.session_state['rol_actual'] == 'docente':
-                    opciones_tabs = ["ðŸ“ Carga la informaciÃ³n del Alumno"] + opciones_tabs
+                    opciones_tabs = ["📝 Carga la información del Alumno"] + opciones_tabs
                     
                 cols_menu = st.columns(len(opciones_tabs))
                 for idx, opcion in enumerate(opciones_tabs):
@@ -1138,28 +1138,28 @@ else:
                             
                 st.write("---")
                 
-                # --- VISTA: CARGA LA INFORMACIÃ“N DEL ALUMNO ---
-                if st.session_state['tab_actual'] == "ðŸ“ Carga la informaciÃ³n del Alumno" and st.session_state['rol_actual'] == 'docente':
-                    st.subheader("Registro de DesempeÃ±o AcadÃ©mico")
+                # --- VISTA: CARGA LA INFORMACIÓN DEL ALUMNO ---
+                if st.session_state['tab_actual'] == "📝 Carga la información del Alumno" and st.session_state['rol_actual'] == 'docente':
+                    st.subheader("Registro de Desempeño Académico")
                     with st.form(f"form_docente_{st.session_state['form_docente_version']}"):
-                        matricula_ingresada = st.text_input("MatrÃ­cula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
+                        matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
                         
                         c_1, c_2, c_3 = st.columns(3)
                         with c_1: promedio = st.number_input("Promedio General", min_value=0.0, max_value=100.0, value=0.0)
                         with c_2: reprobadas = st.number_input("Materias Reprobadas", min_value=0, value=0)
-                        with c_3: calif_ultima = st.number_input("CalificaciÃ³n Ãšltima Materia", min_value=0, max_value=100, value=0)
+                        with c_3: calif_ultima = st.number_input("Calificación Última Materia", min_value=0, max_value=100, value=0)
                         
                         asistencia_clases = st.slider("Asistencia (1-5)", 1, 5, 1)
                         cumplimiento = st.slider("Cumplimiento (1-5)", 1, 5, 1)
-                        participacion = st.slider("ParticipaciÃ³n (1-5)", 1, 5, 1)
-                        practicas = st.slider("PrÃ¡cticas (1-5)", 1, 5, 1)
+                        participacion = st.slider("Participación (1-5)", 1, 5, 1)
+                        practicas = st.slider("Prácticas (1-5)", 1, 5, 1)
                         uso_plataformas = st.slider("Uso Plataformas (1-5)", 1, 5, 1)
                         
-                        dias_asistencia = st.number_input("DÃ­as Totales Asistidos a la Semana", min_value=0, max_value=7, value=0)
+                        dias_asistencia = st.number_input("Días Totales Asistidos a la Semana", min_value=0, max_value=7, value=0)
                         
                         if st.form_submit_button("Actualizar Expediente Escolar", type="primary", width="stretch"):
                             if not matricula_ingresada:
-                                st.error("âŒ Debes escribir una matrÃ­cula.")
+                                st.error("❌ Debes escribir una matrícula.")
                             else:
                                 try:
                                     with get_db_connection() as conn:
@@ -1168,9 +1168,9 @@ else:
                                             usuario_encontrado = c.fetchone()
                                             
                                             if not usuario_encontrado:
-                                                st.error("âŒ La matrÃ­cula no existe.")
+                                                st.error("❌ La matrícula no existe.")
                                             elif usuario_encontrado[2] != st.session_state['usuario_actual']:
-                                                st.error("âŒ Este alumno no estÃ¡ asignado bajo tu cargo.")
+                                                st.error("❌ Este alumno no está asignado bajo tu cargo.")
                                             else:
                                                 consulta = '''REPLACE INTO evaluaciones_docentes
                                                             (matricula, promedio, reprobadas, calif_ultima, dias_asistencia, 
@@ -1179,33 +1179,33 @@ else:
                                                 c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia, 
                                                                      asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
                                                 conn.commit()
-                                                st.success(f"Ã°Å¸Å½â€° Ã‚Â¡Expediente de {usuario_encontrado[0]} guardado!")
+                                                st.success(f"ðÅ¸Å½‰ Â¡Expediente de {usuario_encontrado[0]} guardado!")
                                                 st.session_state['alumno_seleccionado_evaluar'] = ""
                                                 st.session_state['form_docente_version'] += 1
                                                 st.rerun()
                                 except mysql.connector.Error as err:
-                                    st.error(f"Error al guardar evaluaciÃ³n: {err}")
+                                    st.error(f"Error al guardar evaluación: {err}")
 
-                # --- VISTA: GESTIÃ“N DE USUARIOS (CRUD) ---
-                elif st.session_state['tab_actual'] == "ðŸ‘¥ GestiÃ³n de Usuarios (CRUD)":
-                    st.subheader("ðŸ‘¥ Control y GestiÃ³n Institucional de Usuarios")
+                # --- VISTA: GESTIÓN DE USUARIOS (CRUD) ---
+                elif st.session_state['tab_actual'] == "👥 Gestión de Usuarios (CRUD)":
+                    st.subheader("👥 Control y Gestión Institucional de Usuarios")
                     dict_usuarios_completo = {f"{row[1]} ({row[0]}) - [{row[2].upper()}]": row for row in lista_usuarios_crud}
                     
                     col_c1, col_c2, col_c3 = st.columns(3)
                     
                     with col_c1:
-                        with st.expander("âž• Registrar Nuevo Usuario", expanded=False):
+                        with st.expander("➕ Registrar Nuevo Usuario", expanded=False):
                             if 'admin' in st.session_state['rol_actual']:
                                 al_rol = st.selectbox("Asignar Rol", ["alumno", "docente", "administrative"], key="alta_rol_usuario", format_func=lambda rol: {"alumno": "Alumno", "docente": "Docente", "administrative": "Administrador"}.get(rol, rol))
                             else:
                                 al_rol = "alumno"
 
                             with st.form(f"form_alta_global_{st.session_state['form_alta_usuario_version']}"):
-                                label_u = "MatrÃ­cula / Usuario" if 'admin' in st.session_state['rol_actual'] else "MatrÃ­cula del Alumno"
+                                label_u = "Matrícula / Usuario" if 'admin' in st.session_state['rol_actual'] else "Matrícula del Alumno"
                                 al_matricula = st.text_input(label_u).strip()
                                 al_nombre = st.text_input("Nombre Completo")
-                                al_correo = st.text_input("Correo ElectrÃ³nico")
-                                al_password = st.text_input("ContraseÃ±a por Defecto", value="", placeholder="Ej. Temporal123*")
+                                al_correo = st.text_input("Correo Electrónico")
+                                al_password = st.text_input("Contraseña por Defecto", value="", placeholder="Ej. Temporal123*")
                                 
                                 if 'admin' not in st.session_state['rol_actual']:
                                     al_docente_id = st.session_state['usuario_actual']
@@ -1217,9 +1217,9 @@ else:
                                     
                                 if st.form_submit_button("Guardar Usuario", type="primary", width="stretch"):
                                     if not al_matricula or not al_nombre:
-                                        st.error("âŒ MatrÃ­cula y Nombre Obligatorios.")
+                                        st.error("❌ Matrícula y Nombre Obligatorios.")
                                     elif not validar_password_moodle(al_password):
-                                        st.error("âŒ La contraseÃ±a debe tener al menos 8 caracteres, 1 mayÃºscula, 1 minÃºscula, 1 nÃºmero y 1 carÃ¡cter especial.")
+                                        st.error("❌ La contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 minúscula, 1 número y 1 carácter especial.")
                                     else:
                                         try:
                                             password_hash = generar_md5(al_password)
@@ -1228,14 +1228,14 @@ else:
                                                     c.execute("INSERT INTO usuarios (matricula, password, rol, nombre, correo, docente_id) VALUES (%s, %s, %s, %s, %s, %s)",
                                                               (al_matricula, password_hash, al_rol, al_nombre, al_correo, al_docente_id))
                                                     conn.commit()
-                                            st.success("Ã°Å¸Å½â€° Usuario dado de alta exitosamente.")
+                                            st.success("ðÅ¸Å½‰ Usuario dado de alta exitosamente.")
                                             st.session_state['form_alta_usuario_version'] += 1
                                             st.rerun()
                                         except mysql.connector.Error as err:
                                             st.error(f"Error: {err}")
 
                     with col_c2:
-                        with st.expander("ðŸ“ Editar Usuario Seleccionado", expanded=False):
+                        with st.expander("📝 Editar Usuario Seleccionado", expanded=False):
                             if not dict_usuarios_completo:
                                 st.write("No hay usuarios disponibles.")
                             else:
@@ -1261,7 +1261,7 @@ else:
                                 with st.form(f"form_edicion_global_{st.session_state['form_edicion_usuario_version']}"):
                                     edit_nombre = st.text_input("Modificar Nombre Completo", value="" if limpiar_edicion else datos_originales[1])
                                     edit_correo = st.text_input("Modificar Correo", value="" if limpiar_edicion else datos_originales[3])
-                                    edit_password = st.text_input("Modificar ContraseÃ±a (o dejar el Hash)", value="" if limpiar_edicion else datos_originales[4])
+                                    edit_password = st.text_input("Modificar Contraseña (o dejar el Hash)", value="" if limpiar_edicion else datos_originales[4])
                                     
                                     if 'admin' in st.session_state['rol_actual'] and edit_rol == "alumno":
                                         idx_d = 0
@@ -1283,7 +1283,7 @@ else:
                                         
                                         if edit_password != datos_originales[4]:
                                             if not validar_password_moodle(edit_password):
-                                                st.error("âŒ La nueva contraseÃ±a debe tener 8 caracteres, mayÃºscula, minÃºscula, nÃºmero y especial.")
+                                                st.error("❌ La nueva contraseña debe tener 8 caracteres, mayúscula, minúscula, número y especial.")
                                                 valido = False
                                             else:
                                                 pwd_a_guardar = generar_md5(edit_password)
@@ -1297,7 +1297,7 @@ else:
                                                                     WHERE matricula=%s""",
                                                                   (edit_nombre, edit_correo, pwd_a_guardar, edit_rol, edit_docente_id, datos_originales[0]))
                                                         conn.commit()
-                                                st.success("Ã°Å¸Å½â€° Datos de usuario actualizados.")
+                                                st.success("ðÅ¸Å½‰ Datos de usuario actualizados.")
                                                 st.session_state['limpiar_edicion_usuario'] = True
                                                 st.session_state['form_edicion_usuario_version'] += 1
                                                 st.rerun()
@@ -1305,16 +1305,16 @@ else:
                                                 st.error(f"Error al actualizar: {err}")
 
                     with col_c3:
-                        with st.expander("ðŸ—‘ï¸ Eliminar Usuario", expanded=False):
+                        with st.expander("🗑️ Eliminar Usuario", expanded=False):
                             if not dict_usuarios_completo:
                                 st.write("No hay registros.")
                             else:
                                 seleccionado_del = st.selectbox("Buscar usuario a remover:", list(dict_usuarios_completo.keys()), key="sel_crud_del")
                                 datos_eliminar = dict_usuarios_completo[seleccionado_del]
                                 
-                                st.warning(f"Â¿Remover a {datos_eliminar[1]} ({datos_eliminar[0]})? Se eliminarÃ¡n en cascada sus encuestas y calificaciones.")
+                                st.warning(f"¿Remover a {datos_eliminar[1]} ({datos_eliminar[0]})? Se eliminarán en cascada sus encuestas y calificaciones.")
                                 with st.form("form_baja_global"):
-                                    if st.form_submit_button("âŒ Confirmar EliminaciÃ³n Absoluta", type="primary", width="stretch"):
+                                    if st.form_submit_button("❌ Confirmar Eliminación Absoluta", type="primary", width="stretch"):
                                         if datos_eliminar[0] == st.session_state['usuario_actual']:
                                             st.error("No es posible auto-eliminarse del sistema.")
                                         else:
@@ -1323,7 +1323,7 @@ else:
                                                     with conn.cursor() as c:
                                                         c.execute("DELETE FROM usuarios WHERE matricula=%s", (datos_eliminar[0],))
                                                         conn.commit()
-                                                st.success("ðŸ—‘ï¸ Registro revocado con Ã©xito.")
+                                                st.success("🗑️ Registro revocado con éxito.")
                                                 st.rerun()
                                             except mysql.connector.Error as err:
                                                 st.error(f"Error al eliminar: {err}")
@@ -1331,7 +1331,7 @@ else:
                     st.write("---")
                     
                     if lista_usuarios_crud:
-                        df_crud_vista = pd.DataFrame(lista_usuarios_crud, columns=["MatrÃ­cula", "Nombre", "Rol", "Correo", "ContraseÃ±a", "ID Docente Asignado"])
+                        df_crud_vista = pd.DataFrame(lista_usuarios_crud, columns=["Matrícula", "Nombre", "Rol", "Correo", "Contraseña", "ID Docente Asignado"])
                         
                         buffer_crud = io.BytesIO()
                         with pd.ExcelWriter(buffer_crud, engine='openpyxl') as writer:
@@ -1339,10 +1339,10 @@ else:
                             
                         col_tit_tabla, col_btn_tabla = st.columns([8.5, 1.5])
                         with col_tit_tabla:
-                            st.write("### ðŸ“‹ Vista General de la Tabla de Usuarios")
+                            st.write("### 📋 Vista General de la Tabla de Usuarios")
                         with col_btn_tabla:
                             st.download_button(
-                                label="ðŸ“¥ Excel",
+                                label="📥 Excel",
                                 data=buffer_crud.getvalue(),
                                 file_name=f"Vista_General_Usuarios_{time.strftime('%Y%m%d-%H%M%S')}.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1351,58 +1351,58 @@ else:
                             
                         st.dataframe(df_crud_vista, width="stretch")
                     else:
-                        st.write("### ðŸ“‹ Vista General de la Tabla de Usuarios")
+                        st.write("### 📋 Vista General de la Tabla de Usuarios")
                         st.info("No existen usuarios registrados bajo este criterio.")
 
-                # --- VISTA: EJECUTAR DIAGNÃ“STICO ---
-                elif st.session_state['tab_actual'] == "ðŸš€ Ejecutar DiagnÃ³stico":
+                # --- VISTA: EJECUTAR DIAGNÓSTICO ---
+                elif st.session_state['tab_actual'] == "🚀 Ejecutar Diagnóstico":
                     mostrar_modulo_ia()
 
                 # --- VISTA: DASHBOARD INTERACTIVO ---
-                elif st.session_state['tab_actual'] == "ðŸ“Š Dashboard Interactivo":
+                elif st.session_state['tab_actual'] == "📊 Dashboard Interactivo":
                     mostrar_dashboard_interactivo()
 
         with col2:
             with st.container(border=True):
-                st.markdown("### ðŸ“‹ Alumnos Pendientes")
+                st.markdown("### 📋 Alumnos Pendientes")
                 if lista_alumnos_pendientes:
                     for row in lista_alumnos_pendientes:
                         tiene_alumno = row[3] is not None
                         tiene_docente = row[4] is not None
                         
                         if not tiene_alumno and not tiene_docente:
-                            msg_pendiente = "â³ Pendiente: Alumno y Docente"
+                            msg_pendiente = "⏳ Pendiente: Alumno y Docente"
                             color_tag = "#ffb3b3"
                         elif not tiene_alumno:
-                            msg_pendiente = "ðŸ“ Pendiente: Cuestionario Alumno"
+                            msg_pendiente = "📝 Pendiente: Cuestionario Alumno"
                             color_tag = "#ffe6cc"
                         else:
-                            msg_pendiente = " Pendiente: EvaluaciÃ³n Docente"
+                            msg_pendiente = "📊 Pendiente: Evaluación Docente"
                             color_tag = "#e6f2ff"
                             
                         if 'admin' in st.session_state['rol_actual']:
                             nombre_tutor = row[2] if row[2] else "Sin asignar"
                             st.markdown(f"""
                             <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
-                                <b>‘ Alumno:</b> {row[1]} (<small>{row[0]}</small>)<br>
-                                <b>« Docente:</b> {nombre_tutor}<br>
+                                <b>👤 Alumno:</b> {row[1]} (<small>{row[0]}</small>)<br>
+                                <b>👨‍🏫 Docente:</b> {nombre_tutor}<br>
                                 <span style='background-color:{color_tag}; padding:2px 6px; border-radius:4px; font-size:12px; font-weight:bold; display:inline-block; margin-top:4px;'>{msg_pendiente}</span>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
                             if not tiene_docente:
-                                if st.button(f" {row[1]} ({row[0]})", key=f"btn_{row[0]}", width="stretch"):
+                                if st.button(f"👤 {row[1]} ({row[0]})", key=f"btn_{row[0]}", width="stretch"):
                                     st.session_state['alumno_seleccionado_evaluar'] = row[0]
-                                    st.session_state['tab_actual'] = "ðŸ“ Carga la informaciÃ³n del Alumno"
+                                    st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
                                     st.rerun()
                             else:
-                                st.markdown(f"<div style='padding:5px; text-align:center; font-weight:bold;'>ðŸ‘¤ {row[1]} ({row[0]})</div>", unsafe_allow_html=True)
+                                st.markdown(f"<div style='padding:5px; text-align:center; font-weight:bold;'>👤 {row[1]} ({row[0]})</div>", unsafe_allow_html=True)
                             
                             st.markdown(f"<p style='text-align:center; background-color:{color_tag}; font-weight:bold; font-size:12px; margin-top:-6px; border-radius:4px;'>{msg_pendiente}</p>", unsafe_allow_html=True)
                 else:
-                    st.success("ðŸŽ‰ Â¡No quedan alumnos pendientes en este periodo!")
+                    st.success("🎉 ¡No quedan alumnos pendientes en este periodo!")
 
-    # --- RUTEO AUTOMÃTICO DE INTERFAZ SEGÃšN EL ROL DE SESIÃ“N ---
+    # --- RUTEO AUTOMÁTICO DE INTERFAZ SEGÚN EL ROL DE SESIÓN ---
     if st.session_state['rol_actual'] == 'alumno':
         pantalla_alumno()
     elif st.session_state['rol_actual'] == 'docente' or 'admin' in str(st.session_state['rol_actual']).lower():
