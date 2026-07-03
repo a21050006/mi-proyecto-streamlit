@@ -38,19 +38,21 @@ def validar_password_moodle(password):
 st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
+# --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
 <style>
-/* Ocultar menú y marca de agua de Streamlit */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-div[data-testid="stToolbar"],
-div[data-testid="stDecoration"],
-div[data-testid="stStatusWidget"],
-div[data-testid="stDeployButton"] {
-    display: none !important;
+/* Ocultar la barra superior, menú y marca de agua de Streamlit (Actualizado) */
+[data-testid="stHeader"], 
+[data-testid="stToolbar"], 
+[data-testid="stDecoration"], 
+[data-testid="stStatusWidget"], 
+[data-testid="stDeployButton"], 
+#MainMenu, 
+footer, 
+header {
     visibility: hidden !important;
-    height: 0 !important;
+    display: none !important;
+    height: 0px !important;
 }
 
 /* 💻 Diseño para Computadora (Pantallas grandes) */
