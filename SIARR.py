@@ -75,12 +75,9 @@ div[data-testid="stToolbar"] {
 .block-container {
     padding-top: 2rem !important;
 }
-</style>
-""", unsafe_allow_html=True)
 
 /* 💻 Diseño para Computadora (Pantallas grandes) */
 .block-container {
-    padding-top: 2rem !important;
     padding-bottom: 2rem !important;
     padding-left: 3rem !important;
     padding-right: 3rem !important;
@@ -129,7 +126,7 @@ if 'df_resultados' not in st.session_state:
 if 'excel_data' not in st.session_state:
     st.session_state['excel_data'] = None
 if 'df_crudo_entrenamiento' not in st.session_state:
-    st.session_state['df_crudo_entrenamiento'] = None 
+    st.session_state['df_crudo_entrenamiento'] = None
 
 # Variables para el Dashboard Drill-Down
 if 'dash_nivel' not in st.session_state:
