@@ -452,7 +452,7 @@ else:
                 """
                 
                 parametros_query = []
-                if st.session_state['rol_actual'] == 'docente':
+                if rol_actual == 'docente':
                     query_completos += " AND u.docente_id = %s"
                     parametros_query.append(st.session_state['usuario_actual'])
                     
@@ -589,11 +589,11 @@ else:
         st.markdown("Indicadores construidos con los alumnos dados de alta en el sistema, sus cuestionarios y sus evaluaciones docentes.")
 
         colores_proyecto = {
-            "Aprobado": "#2ecc71",
-            "Reprobado": "#ff5722",
+            "Estable": "#2ecc71",
+            "Riesgo": "#ff5722",
             "No Definido": "#7f8c8d"
         }
-        orden_resultado = ["Aprobado", "Reprobado", "No Definido"]
+        orden_resultado = ["Estable", "Riesgo", "No Definido"]
 
         @st.cache_data(ttl=15, show_spinner=False)
         def cargar_alumnos_sistema(usuario_actual, rol_actual):
@@ -660,13 +660,43 @@ else:
             df_sistema['Internet_Casa'] = df_db['internet']
             df_sistema['Internet_Casa_Num'] = df_db['internet'].map({'Sí': 1, 'No': 0, 'SÃ­': 1}).fillna(0)
             df_sistema['Calidad_Internet'] = df_db['calidad_internet']
-            df_sistema['Resultado'] = np.where(
+            df_sistema['Resultado_Academico'] = np.where(
                 (pd.to_numeric(df_sistema['Promedio_General'], errors='coerce') >= 70) &
                 (pd.to_numeric(df_sistema['Materias_Reprobadas'], errors='coerce').fillna(0) == 0),
-                'Aprobado',
-                'Reprobado'
+                'Estable',
+                'Riesgo'
             )
             return df_sistema, int(total_registrados)
+
+        def aplicar_diagnostico_ia(df_base):
+            df_dash = df_base.copy()
+            df_dash["Resultado"] = df_dash["Resultado_Academico"]
+            fuente_dash = "Alumnos registrados en el sistema con cuestionario y evaluacion docente"
+
+            df_ia = st.session_state.get('df_resultados')
+            columnas_ia = {"Matrícula", "Resultado IA"}
+            if df_ia is None or df_ia.empty or not columnas_ia.issubset(set(df_ia.columns)):
+                return df_dash, fuente_dash
+
+            columnas_merge = ["Matrícula", "Resultado IA"]
+            for col in ["Nivel de Riesgo", "Prob. Exacta (%)", "Factores Críticos"]:
+                if col in df_ia.columns:
+                    columnas_merge.append(col)
+
+            df_ia_merge = df_ia[columnas_merge].copy()
+            df_dash["_matricula_key"] = df_dash["Matrícula"].astype(str).str.strip()
+            df_ia_merge["_matricula_key"] = df_ia_merge["Matrícula"].astype(str).str.strip()
+            df_dash = df_dash.merge(
+                df_ia_merge.drop(columns=["Matrícula"]),
+                on="_matricula_key",
+                how="left"
+            ).drop(columns=["_matricula_key"])
+
+            tiene_ia = df_dash["Resultado IA"].notna()
+            df_dash.loc[tiene_ia, "Resultado"] = df_dash.loc[tiene_ia, "Resultado IA"]
+            if tiene_ia.any():
+                fuente_dash = "Diagnostico de IA de alumnos activos con expediente completo"
+            return df_dash, fuente_dash
 
         def normalizar_resultado(df_base):
             df_norm = df_base.copy()
@@ -679,19 +709,21 @@ else:
 
             if pd.api.types.is_numeric_dtype(serie):
                 if "Resultado_Exito" in df_norm.columns and "Resultado" not in df_norm.columns:
-                    df_norm["Resultado_Cat"] = serie.map({1: "Aprobado", 0: "Reprobado"})
+                    df_norm["Resultado_Cat"] = serie.map({1: "Estable", 0: "Riesgo"})
                 else:
-                    df_norm["Resultado_Cat"] = serie.map({0: "Aprobado", 1: "Reprobado"})
+                    df_norm["Resultado_Cat"] = serie.map({0: "Estable", 1: "Riesgo"})
             else:
                 limpio = serie.astype(str).str.strip().str.lower()
                 df_norm["Resultado_Cat"] = limpio.map({
-                    "aprobado": "Aprobado",
-                    "aprobada": "Aprobado",
-                    "estable": "Aprobado",
-                    "reprobado": "Reprobado",
-                    "reprobada": "Reprobado",
-                    "riesgo": "Reprobado"
+                    "aprobado": "Estable",
+                    "aprobada": "Estable",
+                    "estable": "Estable",
+                    "reprobado": "Riesgo",
+                    "reprobada": "Riesgo",
+                    "riesgo": "Riesgo"
                 })
+                df_norm.loc[limpio.str.contains("estable", na=False), "Resultado_Cat"] = "Estable"
+                df_norm.loc[limpio.str.contains("riesgo", na=False), "Resultado_Cat"] = "Riesgo"
             df_norm["Resultado_Cat"] = df_norm["Resultado_Cat"].fillna("No Definido")
             return df_norm, True
 
@@ -768,7 +800,6 @@ else:
             return fig
 
         df_cargado, total_registrados = cargar_alumnos_sistema(st.session_state['usuario_actual'], st.session_state.get('rol_actual'))
-        fuente = "Alumnos registrados en el sistema con cuestionario y evaluación docente"
 
         if df_cargado.empty:
             st.metric("Alumnos registrados", f"{total_registrados:,}")
@@ -776,22 +807,23 @@ else:
             st.info("Para aparecer aquí, el alumno debe estar registrado, responder su cuestionario y contar con evaluación docente.")
             return
 
+        df_cargado, fuente = aplicar_diagnostico_ia(df_cargado)
         df, tiene_resultado = normalizar_resultado(df_cargado)
         if not tiene_resultado:
-            st.error("No se pudo calcular el resultado académico de los alumnos registrados.")
+            st.error("No se pudo calcular el estatus de los alumnos registrados.")
             return
 
         total_alumnos = len(df)
-        aprobados = int((df["Resultado_Cat"] == "Aprobado").sum())
-        reprobados = int((df["Resultado_Cat"] == "Reprobado").sum())
-        tasa_aprobacion = (aprobados / total_alumnos) * 100 if total_alumnos else 0
+        estables = int((df["Resultado_Cat"] == "Estable").sum())
+        en_riesgo = int((df["Resultado_Cat"] == "Riesgo").sum())
+        tasa_estables = (estables / total_alumnos) * 100 if total_alumnos else 0
 
         st.caption(f"Fuente: {fuente}")
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Alumnos registrados", f"{total_registrados:,}")
         m2.metric("Expedientes completos", f"{total_alumnos:,}")
-        m3.metric("Aprobados", f"{aprobados:,}", f"{tasa_aprobacion:.1f}%")
-        m4.metric("Reprobados", f"{reprobados:,}", f"{(reprobados / total_alumnos * 100 if total_alumnos else 0):.1f}%", delta_color="inverse")
+        m3.metric("Estables", f"{estables:,}", f"{tasa_estables:.1f}%")
+        m4.metric("En riesgo", f"{en_riesgo:,}", f"{(en_riesgo / total_alumnos * 100 if total_alumnos else 0):.1f}%", delta_color="inverse")
 
         hist_notebook = [
             ("Promedio_General", "Distribucion del Promedio General", "Promedio General del Estudiante", 28),
@@ -812,11 +844,11 @@ else:
         ]
 
         cat_notebook = [
-            ("Sistema_Escolar", "Incidencia de Aprobacion segun Modalidad", "v", True),
+            ("Sistema_Escolar", "Incidencia de Riesgo segun Modalidad", "v", True),
             ("Internet_Casa", "Conectividad a Internet y Relacion con el Exito", "v", False),
             ("Computadora_Propia", "Hardware Dedicado frente al Rezago", "v", True),
             ("Participacion_Clase", "Participacion Interactiva y Vinculo Curricular", "v", False),
-            ("Cumplimiento_Tareas", "Aprobacion vinculada al Cumplimiento de Entregas", "v", True),
+            ("Cumplimiento_Tareas", "Estatus vinculado al Cumplimiento de Entregas", "v", True),
             ("Uso_Plataformas", "Interaccion con Plataformas de Aprendizaje", "h", False),
         ]
 
@@ -836,7 +868,7 @@ else:
                     color_discrete_map=colores_proyecto,
                     category_orders={"Resultado_Cat": orden_resultado},
                     hole=0.45,
-                    title="Distribucion General del Estatus de Aprobacion"
+                    title="Distribucion General del Estatus de IA"
                 )
                 fig_pie.update_traces(textposition="inside", textinfo="percent+label")
                 fig_pie.update_layout(height=430, margin=dict(t=60, b=25, l=20, r=20))
@@ -943,7 +975,7 @@ else:
             if "Sistema_Escolar" in df_corr.columns and "Sistema_Escolar_Num" not in df_corr.columns:
                 df_corr["Sistema_Escolar_Num"] = df_corr["Sistema_Escolar"].map({"Escolarizado": 1, "Semiescolarizado": 0})
             if "Resultado_Cat" in df_corr.columns:
-                df_corr["Resultado_Exito"] = df_corr["Resultado_Cat"].map({"Aprobado": 1, "Reprobado": 0})
+                df_corr["Resultado_Exito"] = df_corr["Resultado_Cat"].map({"Estable": 1, "Riesgo": 0})
 
             columnas_corr_preferidas = columnas_existentes(df_corr, [
                 "Promedio_General", "Sistema_Escolar_Num", "Resultado_Exito",
@@ -1326,35 +1358,3 @@ else:
                             color_tag = "#ffb3b3"
                         elif not tiene_alumno:
                             msg_pendiente = "📝 Pendiente: Cuestionario Alumno"
-                            color_tag = "#ffe6cc"
-                        else:
-                            msg_pendiente = "📊 Pendiente: Evaluación Docente"
-                            color_tag = "#e6f2ff"
-                            
-                        if 'admin' in st.session_state['rol_actual']:
-                            nombre_tutor = row[2] if row[2] else "Sin asignar"
-                            st.markdown(f"""
-                            <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
-                                <b>👤 Alumno:</b> {row[1]} (<small>{row[0]}</small>)<br>
-                                <b>👨‍🏫 Docente:</b> {nombre_tutor}<br>
-                                <span style='background-color:{color_tag}; padding:2px 6px; border-radius:4px; font-size:12px; font-weight:bold; display:inline-block; margin-top:4px;'>{msg_pendiente}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            if not tiene_docente:
-                                if st.button(f"👤 {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
-                                    st.session_state['alumno_seleccionado_evaluar'] = row[0]
-                                    st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
-                                    st.rerun()
-                            else:
-                                st.markdown(f"<div style='padding:5px; text-align:center; font-weight:bold;'>👤 {row[1]} ({row[0]})</div>", unsafe_allow_html=True)
-                            
-                            st.markdown(f"<p style='text-align:center; background-color:{color_tag}; font-weight:bold; font-size:12px; margin-top:-6px; border-radius:4px;'>{msg_pendiente}</p>", unsafe_allow_html=True)
-                else:
-                    st.success("🎉 ¡No quedan alumnos pendientes en este periodo!")
-
-    # --- RUTEO AUTOMÁTICO DE INTERFAZ SEGÚN EL ROL DE SESIÓN ---
-    if st.session_state['rol_actual'] == 'alumno':
-        pantalla_alumno()
-    elif st.session_state['rol_actual'] == 'docente' or 'admin' in str(st.session_state['rol_actual']).lower():
-        pantalla_docente()
