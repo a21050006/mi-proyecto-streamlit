@@ -36,17 +36,18 @@ def validar_password_moodle(password):
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
+# --- CONFIGURACIÓN DE LA PÁGINA ---
+st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
 <style>
-/* 🚫 BARRIDO TOTAL DE INTERFAZ DE STREAMLIT (Incluye "Manage App") */
-
+/* 🚫 BARRIDO TOTAL DE INTERFAZ DE STREAMLIT */
 [data-testid="stHeader"], 
 [data-testid="stToolbar"], 
-[data-testid="stAppDeployButton"], 
 [data-testid="stDecoration"], 
 [data-testid="stStatusWidget"], 
+[data-testid="stAppDeployButton"],
 #MainMenu, 
 footer, 
 header {
@@ -55,23 +56,21 @@ header {
     height: 0px !important;
 }
 
-/* 🔥 ESTO BORRA EL BOTÓN "MANAGE APP" DE STREAMLIT CLOUD 🔥 */
-.viewerBadge_container, 
-.viewerBadge_link, 
-#viewerBadge {
+/* 🔥 ATAQUE DIRECTO AL BOTÓN "MANAGE APP" DE STREAMLIT CLOUD 🔥 */
+div[class^="viewerBadge"], 
+div[class*="viewerBadge"], 
+div[class^="_viewerBadge"],
+[data-testid="manage-app-button"] {
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
+    z-index: -9999 !important;
     pointer-events: none !important;
-}
-
-/* Ajuste para que el contenido no quede pegado arriba tras borrar la barra */
-.block-container {
-    padding-top: 2rem !important;
 }
 
 /* 💻 Diseño para Computadora (Pantallas grandes) */
 .block-container {
+    padding-top: 2rem !important;
     padding-bottom: 2rem !important;
     padding-left: 3rem !important;
     padding-right: 3rem !important;
@@ -101,6 +100,8 @@ header {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# --- CONTROL DE SESIONES ---
 
 # --- CONTROL DE SESIONES ---
 if 'usuario_actual' not in st.session_state:
