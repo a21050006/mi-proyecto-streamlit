@@ -1358,3 +1358,35 @@ else:
                             color_tag = "#ffb3b3"
                         elif not tiene_alumno:
                             msg_pendiente = "📝 Pendiente: Cuestionario Alumno"
+                            color_tag = "#ffe6cc"
+                        else:
+                            msg_pendiente = "📊 Pendiente: Evaluación Docente"
+                            color_tag = "#e6f2ff"
+                            
+                        if 'admin' in st.session_state['rol_actual']:
+                            nombre_tutor = row[2] if row[2] else "Sin asignar"
+                            st.markdown(f"""
+                            <div style='padding:10px; border:1px solid #ddd; border-radius:5px; margin-bottom:8px; background-color:#fff;'>
+                                <b>👤 Alumno:</b> {row[1]} (<small>{row[0]}</small>)<br>
+                                <b>👨‍🏫 Docente:</b> {nombre_tutor}<br>
+                                <span style='background-color:{color_tag}; padding:2px 6px; border-radius:4px; font-size:12px; font-weight:bold; display:inline-block; margin-top:4px;'>{msg_pendiente}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            if not tiene_docente:
+                                if st.button(f"👤 {row[1]} ({row[0]})", key=f"btn_{row[0]}", use_container_width=True):
+                                    st.session_state['alumno_seleccionado_evaluar'] = row[0]
+                                    st.session_state['tab_actual'] = "📝 Carga la información del Alumno"
+                                    st.rerun()
+                            else:
+                                st.markdown(f"<div style='padding:5px; text-align:center; font-weight:bold;'>👤 {row[1]} ({row[0]})</div>", unsafe_allow_html=True)
+                            
+                            st.markdown(f"<p style='text-align:center; background-color:{color_tag}; font-weight:bold; font-size:12px; margin-top:-6px; border-radius:4px;'>{msg_pendiente}</p>", unsafe_allow_html=True)
+                else:
+                    st.success("🎉 ¡No quedan alumnos pendientes en este periodo!")
+
+    # --- RUTEO AUTOMÁTICO DE INTERFAZ SEGÚN EL ROL DE SESIÓN ---
+    if st.session_state['rol_actual'] == 'alumno':
+        pantalla_alumno()
+    elif st.session_state['rol_actual'] == 'docente' or 'admin' in str(st.session_state['rol_actual']).lower():
+        pantalla_docente()
