@@ -56,7 +56,6 @@ header {
     height: 0px !important;
 }
 
-/* 🔥 ATAQUE DIRECTO AL BOTÓN "MANAGE APP" DE STREAMLIT CLOUD 🔥 */
 div[class^="viewerBadge"], 
 div[class*="viewerBadge"], 
 div[class^="_viewerBadge"],
@@ -322,7 +321,7 @@ else:
                 with col_password:
                     with st.container(border=True):
                         st.markdown("### 🔐 Cambiar Contraseña de Acceso")
-                        st.caption("Modifica tu clave periódicamente para mantener protegidos los archivos y folios de tus proyectos de investigación.")
+                        st.caption("Modifica tu clave para mayor seguridad.")
                         with st.form("form_cambiar_password"):
                             password_actual = st.text_input("Contraseña Actual", type="password", placeholder="Ingresa tu contraseña actual")
                             nueva_password = st.text_input("Nueva Contraseña", type="password", placeholder="Mínimo 8 caracteres")
@@ -611,7 +610,7 @@ else:
 
     def mostrar_dashboard_interactivo():
         st.title("Dashboard de Alumnos Registrados")
-        st.markdown("Indicadores construidos con los alumnos dados de alta en el sistema, sus cuestionarios y sus evaluaciones docentes.")
+        st.markdown("Indicadores construidos con los alumnos dados de alta en el sistema .")
 
         colores_proyecto = {
             "Estable": "#2ecc71",
@@ -696,7 +695,7 @@ else:
         def aplicar_diagnostico_ia(df_base):
             df_dash = df_base.copy()
             df_dash["Resultado"] = df_dash["Resultado_Academico"]
-            fuente_dash = "Alumnos registrados en el sistema con cuestionario y evaluacion docente"
+            fuente_dash = "Alumnos registrados"
 
             df_ia = st.session_state.get('df_resultados')
             columnas_ia = {"Matrícula", "Resultado IA"}
@@ -1082,7 +1081,7 @@ else:
                                         c.execute(consulta, (st.session_state['usuario_actual'], sexo, semestre, sistema, horas_estudio, dias_estudio, 
                                                              motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet))
                                         conn.commit()
-                                st.success("ðÅ¸Å½‰ Â¡Tus respuestas han sido guardadas con Ã©xito!")
+                                st.success("¡Tus respuestas han sido guardadas con Exito!")
                                 st.session_state['form_alumno_version'] += 1
                                 st.rerun()
                             except mysql.connector.Error as err:
@@ -1196,7 +1195,7 @@ else:
                                                 c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia, 
                                                                      asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
                                                 conn.commit()
-                                                st.success(f"ðÅ¸Å½‰ Â¡Expediente de {usuario_encontrado[0]} guardado!")
+                                                st.success(f"¡Expediente de {usuario_encontrado[0]} guardado!")
                                                 st.session_state['alumno_seleccionado_evaluar'] = ""
                                                 st.session_state['form_docente_version'] += 1
                                                 st.rerun()
@@ -1204,8 +1203,8 @@ else:
                                     st.error(f"Error al guardar evaluación: {err}")
 
                 # --- VISTA: GESTIÓN DE USUARIOS (CRUD) ---
-                elif st.session_state['tab_actual'] == "👥 Gestión de Usuarios (CRUD)":
-                    st.subheader("👥 Control y Gestión Institucional de Usuarios")
+                elif st.session_state['tab_actual'] == "👥 Gestión de Usuarios":
+                    st.subheader("👥 Control y Gestión de Estudiantes")
                     dict_usuarios_completo = {f"{row[1]} ({row[0]}) - [{row[2].upper()}]": row for row in lista_usuarios_crud}
                     
                     col_c1, col_c2, col_c3 = st.columns(3)
@@ -1314,7 +1313,7 @@ else:
                                                                     WHERE matricula=%s""",
                                                                   (edit_nombre, edit_correo, pwd_a_guardar, edit_rol, edit_docente_id, datos_originales[0]))
                                                         conn.commit()
-                                                st.success("ðÅ¸Å½‰ Datos de usuario actualizados.")
+                                                st.success("Datos de usuario actualizados.")
                                                 st.session_state['limpiar_edicion_usuario'] = True
                                                 st.session_state['form_edicion_usuario_version'] += 1
                                                 st.rerun()
