@@ -105,6 +105,14 @@ if 'dash_estado_acad' not in st.session_state:
     st.session_state['dash_estado_acad'] = None
 if 'dash_semestre' not in st.session_state:
     st.session_state['dash_semestre'] = None
+if 'form_alumno_version' not in st.session_state:
+    st.session_state['form_alumno_version'] = 0
+if 'form_docente_version' not in st.session_state:
+    st.session_state['form_docente_version'] = 0
+if 'form_alta_usuario_version' not in st.session_state:
+    st.session_state['form_alta_usuario_version'] = 0
+if 'form_edicion_usuario_version' not in st.session_state:
+    st.session_state['form_edicion_usuario_version'] = 0
 
 class StreamlitLogger(Callback):
     def __init__(self, placeholder):
@@ -444,7 +452,7 @@ else:
                 """
                 
                 parametros_query = []
-                if st.session_state['rol_actual'] == 'docente':
+                if rol_actual == 'docente':
                     query_completos += " AND u.docente_id = %s"
                     parametros_query.append(st.session_state['usuario_actual'])
                     
@@ -986,7 +994,7 @@ else:
                 st.write("---")
                 st.subheader("📋 Cuestionario de Hábitos y Contexto Estudiantil")
                 
-                with st.form("form_alumno"):
+                with st.form(f"form_alumno_{st.session_state['form_alumno_version']}"):
                     sexo = st.selectbox("Sexo", ["Hombre", "Mujer"], index=None, placeholder="Selecciona una opción...")
                     semestre = st.number_input("Semestre actual", min_value=1, max_value=12, value=None, placeholder="Ej. 1")
                     sistema = st.selectbox("Sistema Escolar", ["Escolarizado", "Semiescolarizado"], index=None, placeholder="Selecciona una opción...")
@@ -1017,7 +1025,9 @@ else:
                                         c.execute(consulta, (st.session_state['usuario_actual'], sexo, semestre, sistema, horas_estudio, dias_estudio, 
                                                              motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet))
                                         conn.commit()
-                                st.success("🎉 ¡Tus respuestas han sido guardadas con éxito!")
+                                st.success("ðŸŽ‰ Â¡Tus respuestas han sido guardadas con Ã©xito!")
+                                st.session_state['form_alumno_version'] += 1
+                                st.rerun()
                             except mysql.connector.Error as err:
                                 st.error(f"Error al guardar cuestionario: {err}")
         with col2:
@@ -1091,7 +1101,7 @@ else:
                 # --- VISTA: CARGA LA INFORMACIÓN DEL ALUMNO ---
                 if st.session_state['tab_actual'] == "📝 Carga la información del Alumno" and st.session_state['rol_actual'] == 'docente':
                     st.subheader("Registro de Desempeño Académico")
-                    with st.form("form_docente"):
+                    with st.form(f"form_docente_{st.session_state['form_docente_version']}"):
                         matricula_ingresada = st.text_input("Matrícula del Alumno a Evaluar", value=st.session_state['alumno_seleccionado_evaluar']).strip()
                         
                         c_1, c_2, c_3 = st.columns(3)
@@ -1129,8 +1139,9 @@ else:
                                                 c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia, 
                                                                      asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
                                                 conn.commit()
-                                                st.success(f"🎉 ¡Expediente de {usuario_encontrado[0]} guardado!")
+                                                st.success(f"ðŸŽ‰ Â¡Expediente de {usuario_encontrado[0]} guardado!")
                                                 st.session_state['alumno_seleccionado_evaluar'] = ""
+                                                st.session_state['form_docente_version'] += 1
                                                 st.rerun()
                                 except mysql.connector.Error as err:
                                     st.error(f"Error al guardar evaluación: {err}")
@@ -1149,12 +1160,12 @@ else:
                             else:
                                 al_rol = "alumno"
 
-                            with st.form("form_alta_global"):
+                            with st.form(f"form_alta_global_{st.session_state['form_alta_usuario_version']}"):
                                 label_u = "Matrícula / Usuario" if 'admin' in st.session_state['rol_actual'] else "Matrícula del Alumno"
                                 al_matricula = st.text_input(label_u).strip()
                                 al_nombre = st.text_input("Nombre Completo")
                                 al_correo = st.text_input("Correo Electrónico")
-                                al_password = st.text_input("Contraseña por Defecto", value="Temporal123*")
+                                al_password = st.text_input("Contraseña por Defecto", value="", placeholder="Ej. Temporal123*")
                                 
                                 if al_rol == "alumno":
                                     doc_asig = st.selectbox("Docente Tutor", list(dict_docentes.keys()))
@@ -1175,7 +1186,8 @@ else:
                                                     c.execute("INSERT INTO usuarios (matricula, password, rol, nombre, correo, docente_id) VALUES (%s, %s, %s, %s, %s, %s)",
                                                               (al_matricula, password_hash, al_rol, al_nombre, al_correo, al_docente_id))
                                                     conn.commit()
-                                            st.success("🎉 Usuario dado de alta exitosamente.")
+                                            st.success("ðŸŽ‰ Usuario dado de alta exitosamente.")
+                                            st.session_state['form_alta_usuario_version'] += 1
                                             st.rerun()
                                         except mysql.connector.Error as err:
                                             st.error(f"Error: {err}")
@@ -1187,11 +1199,12 @@ else:
                             else:
                                 seleccionado_edit = st.selectbox("Buscar usuario a modificar:", list(dict_usuarios_completo.keys()), key="sel_crud_edit")
                                 datos_originales = dict_usuarios_completo[seleccionado_edit]
+                                limpiar_edicion = st.session_state.pop('limpiar_edicion_usuario', False)
                                 
-                                with st.form("form_edicion_global"):
-                                    edit_nombre = st.text_input("Modificar Nombre Completo", value=datos_originales[1])
-                                    edit_correo = st.text_input("Modificar Correo", value=datos_originales[3])
-                                    edit_password = st.text_input("Modificar Contraseña (o dejar el Hash)", value=datos_originales[4])
+                                with st.form(f"form_edicion_global_{st.session_state['form_edicion_usuario_version']}"):
+                                    edit_nombre = st.text_input("Modificar Nombre Completo", value="" if limpiar_edicion else datos_originales[1])
+                                    edit_correo = st.text_input("Modificar Correo", value="" if limpiar_edicion else datos_originales[3])
+                                    edit_password = st.text_input("Modificar Contraseña (o dejar el Hash)", value="" if limpiar_edicion else datos_originales[4])
                                     
                                     if 'admin' in st.session_state['rol_actual']:
                                         roles_disp = ["alumno", "docente", "administrative"]
@@ -1235,7 +1248,9 @@ else:
                                                                     WHERE matricula=%s""",
                                                                   (edit_nombre, edit_correo, pwd_a_guardar, edit_rol, edit_docente_id, datos_originales[0]))
                                                         conn.commit()
-                                                st.success("🎉 Datos de usuario actualizados.")
+                                                st.success("ðŸŽ‰ Datos de usuario actualizados.")
+                                                st.session_state['limpiar_edicion_usuario'] = True
+                                                st.session_state['form_edicion_usuario_version'] += 1
                                                 st.rerun()
                                             except mysql.connector.Error as err:
                                                 st.error(f"Error al actualizar: {err}")
