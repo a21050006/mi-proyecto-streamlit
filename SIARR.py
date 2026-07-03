@@ -39,21 +39,45 @@ st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
+# --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
 <style>
-/* Ocultar la barra superior, menú y marca de agua de Streamlit (Actualizado) */
-[data-testid="stHeader"], 
-[data-testid="stToolbar"], 
-[data-testid="stDecoration"], 
-[data-testid="stStatusWidget"], 
-[data-testid="stDeployButton"], 
-#MainMenu, 
-footer, 
-header {
-    visibility: hidden !important;
+/* 🚫 ELIMINACIÓN TOTAL DE INTERFAZ DE STREAMLIT (Compatible con nuevas versiones) */
+
+/* Elimina barra de deploy, menú de hamburguesa y barra superior completa */
+[data-testid="stHeader"] {
     display: none !important;
+    visibility: hidden !important;
     height: 0px !important;
 }
+
+/* Elimina la línea de color de decoración que aparece arriba */
+[data-testid="stDecoration"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0px !important;
+}
+
+/* Elimina el pie de página ("Made with Streamlit") */
+footer {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Elimina cualquier menú flotante o barra de estado residual */
+div[data-testid="stStatusWidget"], 
+div[data-testid="stToolbar"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0px !important;
+}
+
+/* Ajuste para que el contenido no quede pegado arriba tras borrar la barra */
+.block-container {
+    padding-top: 2rem !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 /* 💻 Diseño para Computadora (Pantallas grandes) */
 .block-container {
