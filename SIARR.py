@@ -38,37 +38,31 @@ def validar_password_moodle(password):
 st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
-# --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
 <style>
-/* 🚫 ELIMINACIÓN TOTAL DE INTERFAZ DE STREAMLIT (Compatible con nuevas versiones) */
+/* 🚫 BARRIDO TOTAL DE INTERFAZ DE STREAMLIT (Incluye "Manage App") */
 
-/* Elimina barra de deploy, menú de hamburguesa y barra superior completa */
-[data-testid="stHeader"] {
+[data-testid="stHeader"], 
+[data-testid="stToolbar"], 
+[data-testid="stAppDeployButton"], 
+[data-testid="stDecoration"], 
+[data-testid="stStatusWidget"], 
+#MainMenu, 
+footer, 
+header {
     display: none !important;
     visibility: hidden !important;
     height: 0px !important;
 }
 
-/* Elimina la línea de color de decoración que aparece arriba */
-[data-testid="stDecoration"] {
+/* 🔥 ESTO BORRA EL BOTÓN "MANAGE APP" DE STREAMLIT CLOUD 🔥 */
+.viewerBadge_container, 
+.viewerBadge_link, 
+#viewerBadge {
     display: none !important;
     visibility: hidden !important;
-    height: 0px !important;
-}
-
-/* Elimina el pie de página ("Made with Streamlit") */
-footer {
-    display: none !important;
-    visibility: hidden !important;
-}
-
-/* Elimina cualquier menú flotante o barra de estado residual */
-div[data-testid="stStatusWidget"], 
-div[data-testid="stToolbar"] {
-    display: none !important;
-    visibility: hidden !important;
-    height: 0px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 /* Ajuste para que el contenido no quede pegado arriba tras borrar la barra */
