@@ -460,7 +460,7 @@ else:
                 """
                 
                 parametros_query = []
-                if rol_actual == 'docente':
+                if st.session_state['rol_actual'] == 'docente':
                     query_completos += " AND u.docente_id = %s"
                     parametros_query.append(st.session_state['usuario_actual'])
                     
