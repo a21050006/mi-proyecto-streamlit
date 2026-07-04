@@ -852,6 +852,8 @@ else:
         ]
 
         cat_notebook = [
+            ("Sexo", "Distribución de Riesgo por Sexo", "v", False),             
+            ("Semestre", "Niveles de Riesgo según el Semestre", "v", False),
             ("Sistema_Escolar", "Incidencia de Riesgo segun Modalidad", "v", True),
             ("Internet_Casa", "Conectividad a Internet y Relacion con el Exito", "v", False),
             ("Computadora_Propia", "Hardware Dedicado frente al Rezago", "v", True),
