@@ -890,9 +890,7 @@ if seccion_dashboard == "Resumen":
         width="stretch",
         hide_index=True
     )
-
-       
-        if seccion_dashboard == "Histogramas":
+    if seccion_dashboard == "Histogramas":
             st.subheader("Distribuciones de los alumnos registrados")
             graficas_hist = [(col, titulo, etiqueta, bins) for col, titulo, etiqueta, bins in hist_notebook if col in df.columns]
             if not graficas_hist:
