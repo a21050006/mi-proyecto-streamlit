@@ -36,35 +36,21 @@ def validar_password_moodle(password):
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
-# --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="SIARR", page_icon="🎓", layout="wide")
 
 # --- CSS PERSONALIZADO (Optimizado para Computadora y Celular) ---
 st.markdown("""
 <style>
-/* 🚫 BARRIDO TOTAL DE INTERFAZ DE STREAMLIT */
-[data-testid="stHeader"], 
-[data-testid="stToolbar"], 
-[data-testid="stDecoration"], 
-[data-testid="stStatusWidget"], 
-[data-testid="stAppDeployButton"],
-#MainMenu, 
-footer, 
-header {
+/* Ocultar menú y marca de agua de Streamlit */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+div[data-testid="stToolbar"],
+div[data-testid="stDecoration"],
+div[data-testid="stStatusWidget"],
+div[data-testid="stDeployButton"] {
     display: none !important;
     visibility: hidden !important;
-    height: 0px !important;
-}
-
-div[class^="viewerBadge"], 
-div[class*="viewerBadge"], 
-div[class^="_viewerBadge"],
-[data-testid="manage-app-button"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    z-index: -9999 !important;
-    pointer-events: none !important;
+    height: 0 !important;
 }
 
 /* 💻 Diseño para Computadora (Pantallas grandes) */
@@ -101,8 +87,6 @@ div[class^="_viewerBadge"],
 """, unsafe_allow_html=True)
 
 # --- CONTROL DE SESIONES ---
-
-# --- CONTROL DE SESIONES ---
 if 'usuario_actual' not in st.session_state:
     st.session_state['usuario_actual'] = None
 if 'rol_actual' not in st.session_state:
@@ -120,7 +104,7 @@ if 'df_resultados' not in st.session_state:
 if 'excel_data' not in st.session_state:
     st.session_state['excel_data'] = None
 if 'df_crudo_entrenamiento' not in st.session_state:
-    st.session_state['df_crudo_entrenamiento'] = None
+    st.session_state['df_crudo_entrenamiento'] = None 
 
 # Variables para el Dashboard Drill-Down
 if 'dash_nivel' not in st.session_state:
@@ -321,7 +305,7 @@ else:
                 with col_password:
                     with st.container(border=True):
                         st.markdown("### 🔐 Cambiar Contraseña de Acceso")
-                        st.caption("Modifica tu clave para mayor seguridad.")
+                        st.caption("Modifica tu clave periódicamente para mantener protegidos los archivos y folios de tus proyectos de investigación.")
                         with st.form("form_cambiar_password"):
                             password_actual = st.text_input("Contraseña Actual", type="password", placeholder="Ingresa tu contraseña actual")
                             nueva_password = st.text_input("Nueva Contraseña", type="password", placeholder="Mínimo 8 caracteres")
@@ -610,7 +594,7 @@ else:
 
     def mostrar_dashboard_interactivo():
         st.title("Dashboard de Alumnos Registrados")
-        st.markdown("Indicadores construidos con los alumnos dados de alta en el sistema .")
+        st.markdown("Indicadores construidos con los alumnos dados de alta en el sistema, sus cuestionarios y sus evaluaciones docentes.")
 
         colores_proyecto = {
             "Estable": "#2ecc71",
@@ -695,7 +679,7 @@ else:
         def aplicar_diagnostico_ia(df_base):
             df_dash = df_base.copy()
             df_dash["Resultado"] = df_dash["Resultado_Academico"]
-            fuente_dash = "Alumnos registrados"
+            fuente_dash = "Alumnos registrados en el sistema con cuestionario y evaluacion docente"
 
             df_ia = st.session_state.get('df_resultados')
             columnas_ia = {"Matrícula", "Resultado IA"}
@@ -868,6 +852,8 @@ else:
         ]
 
         cat_notebook = [
+            ("Sexo", "Distribución de Riesgo por Sexo", "v", False),             
+            ("Semestre", "Niveles de Riesgo según el Semestre", "v", False),
             ("Sistema_Escolar", "Incidencia de Riesgo segun Modalidad", "v", True),
             ("Internet_Casa", "Conectividad a Internet y Relacion con el Exito", "v", False),
             ("Computadora_Propia", "Hardware Dedicado frente al Rezago", "v", True),
@@ -1081,7 +1067,7 @@ else:
                                         c.execute(consulta, (st.session_state['usuario_actual'], sexo, semestre, sistema, horas_estudio, dias_estudio, 
                                                              motivacion, confianza, dificultad, apoyo, estres, computadora, internet, calidad_internet))
                                         conn.commit()
-                                st.success("¡Tus respuestas han sido guardadas con Exito!")
+                                st.success("ðÅ¸Å½‰ Â¡Tus respuestas han sido guardadas con Ã©xito!")
                                 st.session_state['form_alumno_version'] += 1
                                 st.rerun()
                             except mysql.connector.Error as err:
@@ -1195,7 +1181,7 @@ else:
                                                 c.execute(consulta, (matricula_ingresada, promedio, reprobadas, calif_ultima, dias_asistencia, 
                                                                      asistencia_clases, cumplimiento, participacion, practicas, uso_plataformas))
                                                 conn.commit()
-                                                st.success(f"¡Expediente de {usuario_encontrado[0]} guardado!")
+                                                st.success(f"ðÅ¸Å½‰ Â¡Expediente de {usuario_encontrado[0]} guardado!")
                                                 st.session_state['alumno_seleccionado_evaluar'] = ""
                                                 st.session_state['form_docente_version'] += 1
                                                 st.rerun()
@@ -1203,8 +1189,8 @@ else:
                                     st.error(f"Error al guardar evaluación: {err}")
 
                 # --- VISTA: GESTIÓN DE USUARIOS (CRUD) ---
-                elif st.session_state['tab_actual'] == "👥 Gestión de Usuarios":
-                    st.subheader("👥 Control y Gestión de Estudiantes")
+                elif st.session_state['tab_actual'] == "👥 Gestión de Usuarios (CRUD)":
+                    st.subheader("👥 Control y Gestión Institucional de Usuarios")
                     dict_usuarios_completo = {f"{row[1]} ({row[0]}) - [{row[2].upper()}]": row for row in lista_usuarios_crud}
                     
                     col_c1, col_c2, col_c3 = st.columns(3)
@@ -1313,7 +1299,7 @@ else:
                                                                     WHERE matricula=%s""",
                                                                   (edit_nombre, edit_correo, pwd_a_guardar, edit_rol, edit_docente_id, datos_originales[0]))
                                                         conn.commit()
-                                                st.success("Datos de usuario actualizados.")
+                                                st.success("ðÅ¸Å½‰ Datos de usuario actualizados.")
                                                 st.session_state['limpiar_edicion_usuario'] = True
                                                 st.session_state['form_edicion_usuario_version'] += 1
                                                 st.rerun()
