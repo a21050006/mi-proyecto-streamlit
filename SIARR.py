@@ -867,35 +867,30 @@ else:
             ["Resumen", "Histogramas", "Categoricas", "Dispersion", "Correlacion"],
             horizontal=True
         )
-
         if seccion_dashboard == "Resumen":
-            col_a, col_b = st.columns([1, 1])
-            with col_a:
-                fig_pie = px.pie(
-                    df,
-                    names="Resultado_Cat",
-                    color="Resultado_Cat",
-                    color_discrete_map=colores_proyecto,
-                    category_orders={"Resultado_Cat": orden_resultado},
-                    hole=0.45,
-                    title="Distribucion General del Estatus de IA"
-                )
-                fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-                fig_pie.update_layout(height=430, margin=dict(t=60, b=25, l=20, r=20))
-                st.plotly_chart(fig_pie, width="stretch")
-            with col_b:
-                fig_resultado = fig_barras(df, "Resultado_Cat", "Cantidad de Estudiantes por Estatus")
-                if fig_resultado:
-                    fig_resultado.update_layout(showlegend=False)
-                    st.plotly_chart(fig_resultado, width="stretch")
 
-            disponibles = columnas_existentes(df, [c[0] for c in hist_notebook] + [c[0] for c in cat_notebook])
-            st.dataframe(
-                pd.DataFrame({"Grafica integrada": disponibles}),
-                width="stretch",
-                hide_index=True
-            )
+    fig_resultado = fig_barras(
+        df,
+        "Resultado_Cat",
+        "Cantidad de Estudiantes por Estatus"
+    )
 
+    if fig_resultado:
+        fig_resultado.update_layout(showlegend=False)
+        st.plotly_chart(fig_resultado, width="stretch")
+
+    disponibles = columnas_existentes(
+        df,
+        [c[0] for c in hist_notebook] + [c[0] for c in cat_notebook]
+    )
+
+    st.dataframe(
+        pd.DataFrame({"Grafica integrada": disponibles}),
+        width="stretch",
+        hide_index=True
+    )
+
+       
         if seccion_dashboard == "Histogramas":
             st.subheader("Distribuciones de los alumnos registrados")
             graficas_hist = [(col, titulo, etiqueta, bins) for col, titulo, etiqueta, bins in hist_notebook if col in df.columns]
