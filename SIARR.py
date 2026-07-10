@@ -867,13 +867,29 @@ else:
             ["Resumen", "Histogramas", "Categoricas", "Dispersion", "Correlacion"],
             horizontal=True
         )
-            if seccion_dashboard == "Resumen":
-    
-        fig_resultado = fig_barras(
-            df,
-            "Resultado_Cat",
-            "Cantidad de Estudiantes por Estatus"
-        )
+        if seccion_dashboard == "Resumen":
+
+    fig_resultado = fig_barras(
+        df,
+        "Resultado_Cat",
+        "Cantidad de Estudiantes por Estatus"
+    )
+
+        if fig_resultado:
+        fig_resultado.update_layout(showlegend=False)
+        st.plotly_chart(fig_resultado, width="stretch")
+
+    disponibles = columnas_existentes(
+        df,
+        [c[0] for c in hist_notebook] + [c[0] for c in cat_notebook]
+    )
+
+    st.dataframe(
+        pd.DataFrame({"Grafica integrada": disponibles}),
+        width="stretch",
+        hide_index=True
+    )
+         
     
         if fig_resultado:
             fig_resultado.update_layout(showlegend=False)
