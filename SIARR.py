@@ -870,19 +870,7 @@ else:
 
         if seccion_dashboard == "Resumen":
             col_a, col_b = st.columns([1, 1])
-            with col_a:
-                fig_pie = px.pie(
-                    df,
-                    names="Resultado_Cat",
-                    color="Resultado_Cat",
-                    color_discrete_map=colores_proyecto,
-                    category_orders={"Resultado_Cat": orden_resultado},
-                    hole=0.45,
-                    title="Distribucion General del Estatus de IA"
-                )
-                fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-                fig_pie.update_layout(height=430, margin=dict(t=60, b=25, l=20, r=20))
-                st.plotly_chart(fig_pie, width="stretch")
+            
             with col_b:
                 fig_resultado = fig_barras(df, "Resultado_Cat", "Cantidad de Estudiantes por Estatus")
                 if fig_resultado:
